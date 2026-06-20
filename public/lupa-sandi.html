@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lupa Kata Sandi - PhotoApp</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <div class="form-box">
+            <h2>Atur Ulang Sandi</h2>
+            <form id="formLupaSandi">
+                <div class="input-group">
+                    <label>Username Anda</label>
+                    <input type="text" id="username" required placeholder="Masukkan username akun Anda">
+                </div>
+                <div class="input-group">
+                    <label>Password Baru</label>
+                    <input type="password" id="passwordBaru" required placeholder="Buat password baru">
+                    <small style="color: #718096; font-size: 11px; display: block; margin-top: 5px;">
+                        * Harus diawali huruf KAPITAL dan diakhiri ANGKA.
+                    </small>
+                </div>
+                <button type="submit" class="btn" style="background: #e53e3e;">Ganti Kata Sandi</button>
+            </form>
+            <p style="text-align: center; margin-top: 15px; font-size: 14px;">
+                <a href="/">Kembali ke Login</a>
+            </p>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('formLupaSandi').addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            const user = document.getElementById('username').value;
+            const passBaru = document.getElementById('passwordBaru').value;
+
+            // 1. Validasi: Harus diawali huruf kapital (A-Z)
+            const cekKapitalAwal = /^[A-Z]/.test(passBaru);
+            // 2. Validasi: Harus diakhiri angka (0-9)
+            const cekAngkaAkhir = /[0-9]$/.test(passBaru);
+
+            if (!cekKapitalAwal) {
+                alert('Gagal! Password harus diawali dengan huruf KAPITAL.');
+                return;
+            }
+
+            if (!cekAngkaAkhir) {
+                alert('Gagal! Password harus diakhiri dengan ANGKA.');
+                return;
+            }
+
+            if (passBaru.length < 6) {
+                alert('Gagal! Password minimal harus 6 karakter.');
+                return;
+            }
+
+            // Jika lolos validasi, kirim ke server
+            fetch('/reset-password', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: `username=${encodeURIComponent(user)}&passwordBaru=${encodeURIComponent(passBaru)}`
+            })
+            .then(res => res.json())
+            .then(data => {
+                alert(data.pesan);
+                if (data.sukses) {
+                    window.location.href = '/'; // Balik ke halaman login
+                }
+            });
+        });
+    </script>
+</body>
+</html>

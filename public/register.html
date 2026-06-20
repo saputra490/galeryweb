@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Daftar Akun - PhotoApp</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <div class="form-box">
+            <h2>Daftar Akun Baru</h2>
+            <form id="formDaftar">
+                <div class="input-group">
+                    <label>Username Baru</label>
+                    <input type="text" id="username" required placeholder="Buat username">
+                </div>
+                <div class="input-group">
+                    <label>Password Baru</label>
+                    <input type="password" id="password" required placeholder="Buat password">
+                </div>
+                <button type="submit" class="btn" style="background: #764ba2;">Daftar Akun</button>
+            </form>
+            <p style="text-align: center; margin-top: 15px; font-size: 14px;">
+                Sudah punya akun? <a href="/">Login di sini</a>
+            </p>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('formDaftar').addEventListener('submit', function(e) {
+            e.preventDefault(); // Mencegah pindah halaman putih
+
+            const user = document.getElementById('username').value;
+            const pass = document.getElementById('password').value;
+
+            // Mengirim data ke server secara diam-diam
+            fetch('/register', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: `username=${encodeURIComponent(user)}&password=${encodeURIComponent(pass)}`
+            })
+            .then(res => res.json())
+            .then(data => {
+                // Langsung memunculkan notifikasi pop-up sesuai respon server
+                alert(data.pesan);
+                if (data.sukses) {
+                    window.location.href = '/'; // Langsung keluar balik ke login
+                }
+            });
+        });
+    </script>
+</body>
+</html>
+

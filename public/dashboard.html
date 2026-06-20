@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Galery Web</title>
+    <style>
+        /* Reset & Font Sans-Serif Bersih ala Aplikasi Presensi Modern */
+        * {
+            box-sizing: border-box;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+        }
+
+        /* Latar belakang putih bersih dari ujung ke ujung */
+        body {
+            background-color: #ffffff;
+            color: #000000;
+            padding: 0;
+            min-height: 100vh;
+        }
+
+        .dashboard-container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: #ffffff;
+            min-height: 100vh;
+            padding: 24px 20px;
+        }
+
+        /* Bagian Atas: Judul & Tombol Keluar */
+        .header-box {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+        }
+        .header-box h2 {
+            font-size: 22px;
+            font-weight: 700;
+            color: #000000;
+            letter-spacing: -0.5px;
+        }
+        .btn-logout {
+            padding: 8px 14px;
+            background: #fff5f5;
+            color: #e53e3e;
+            text-decoration: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        /* Box Kontainer Unggah Utama (Hitam Elegan) */
+        .upload-section {
+            background-color: #000000;
+            color: #ffffff;
+            padding: 24px 16px;
+            border-radius: 12px;
+            margin-bottom: 32px;
+        }
+        .upload-section h4 {
+            font-size: 13px;
+            font-weight: 600;
+            margin-bottom: 16px;
+            color: #b3b3b3;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .input-wrapper {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        /* Tombol Pemicu Desain Kotak Minimalis */
+        .btn-pilih {
+            background: #121212;
+            color: #ffffff;
+            padding: 14px;
+            border-radius: 8px;
+            text-align: center;
+            font-size: 13px;
+            font-weight: 600;
+            border: 1px dashed #333333;
+            cursor: pointer;
+            display: block;
+            transition: background 0.2s;
+        }
+        .btn-pilih:hover { background: #1a1a1a; }
+
+        /* Tombol Unggah Utama */
+        .btn-submit {
+            background: #ffffff;
+            color: #000000;
+            border: none;
+            padding: 14px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 700;
+            cursor: pointer;
+            width: 100%;
+            margin-top: 4px;
+        }
+        .btn-submit:hover { background: #f1f3f5; }
+
+        .status-file {
+            font-size: 12px;
+            color: #888888;
+            text-align: center;
+            margin-top: -2px;
+            font-style: italic;
+        }
+
+        /* Bagian Galeri Hasil Laporan */
+        .section-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: #000000;
+            margin-bottom: 16px;
+            letter-spacing: -0.3px;
+        }
+
+        .gallery {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 16px;
+        }
+
+        .foto-box {
+            background: #ffffff;
+            border: 1px solid #f0f0f0;
+            padding: 10px;
+            border-radius: 12px;
+            display: flex;
+            flex-direction: column;
+        }
+        .foto-box img {
+            width: 100%;
+            height: 140px;
+            object-fit: cover;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+
+        /* Teks Tanggal Tebal & Bersih Pasca Penghapusan Status */
+        .teks-tanggal {
+            font-size: 13px;
+            font-weight: 700;
+            color: #000000;
+            margin: 10px 0 12px 0;
+        }
+
+        /* Tombol Operasi Gambar */
+        .area-tombol {
+            display: flex;
+            gap: 8px;
+            margin-top: auto;
+        }
+        .btn-action {
+            flex: 1;
+            padding: 8px;
+            font-size: 12px;
+            font-weight: 600;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            text-align: center;
+            text-decoration: none;
+        }
+        .btn-download { background: #f8f9fa; color: #1a1a1a; border: 1px solid #e9ecef; }
+        .btn-delete { background: #fff5f5; color: #e53e3e; }
+
+        .btn-selengkapnya {
+            display: none;
+            margin: 24px auto 0 auto;
+            padding: 12px 24px;
+            background: #ffffff;
+            color: #000000;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 13px;
+        }
+
+        /* Lightbox Fullscreen Preview */
+        .lightbox {
+            display: none;
+            position: fixed; z-index: 9999;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.95);
+            justify-content: center; align-items: center;
+        }
+        .lightbox img { max-width: 90%; max-height: 80%; border-radius: 8px; }
+        
+        .close-lightbox {
+            position: absolute; 
+            top: 20px; 
+            right: 25px; 
+            color: #ffffff; 
+            font-size: 35px; 
+            font-weight: 300; 
+            cursor: pointer; 
+            user-select: none;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="dashboard-container">
+        <div class="header-box">
+            <h2>My Galeri</h2>
+            <a href="/" class="btn-logout">Keluar</a>
+        </div>
+
+        <div class="upload-section">
+            <h4>Pilih Opsi Unggah Foto:</h4>
+            <form action="/upload" method="POST" enctype="multipart/form-data" class="input-wrapper">
+                
+                <label for="inputKamera" class="btn-pilih">📸 Ambil Foto Pake Kamera</label>
+                <input type="file" id="inputKamera" name="fotoKeren" accept="image/*" capture="environment" style="display: none;" onchange="updateStatus()">
+                
+                <label for="inputGaleri" class="btn-pilih">📁 Pilih File dari Galeri HP</label>
+                <input type="file" id="inputGaleri" name="fotoKeren" accept="image/*" multiple style="display: none;" onchange="updateStatus()">
+                
+                <div id="infoStatus" class="status-file">Belum ada file terpilih</div>
+
+                <button type="submit" class="btn-submit">Unggah Foto Sekarang</button>
+            </form>
+        </div>
+
+        <h3 class="section-title">My Foto</h3>
+        <div class="gallery" id="galeriWeb"></div>
+        
+        <button id="btnMore" class="btn-selengkapnya" onclick="tampilkanSemuaFoto()">Tampilkan Lebih Banyak</button>
+    </div>
+
+    <div id="boxLightbox" class="lightbox" onclick="tutupFoto()">
+        <div class="close-lightbox">&times;</div>
+        <img id="fotoBesar" src="" alt="Perbesar" onclick="event.stopPropagation()">
+    </div>
+
+<script>
+    let semuaFotoBlok = [];
+    const BATAS_AWAL = 4;
+
+    // Fungsi membaca jumlah file dari kedua input secara akurat
+    function updateStatus() {
+        const fileKamera = document.getElementById('inputKamera').files.length;
+        const fileGaleri = document.getElementById('inputGaleri').files.length;
+        const totalFile = fileKamera + fileGaleri;
+        
+        const info = document.getElementById('infoStatus');
+        if(totalFile > 0) {
+            info.innerText = `✓ ${totalFile} file siap diunggah`;
+            info.style.color = "#4ade80";
+        }
+    }
+
+    function formatTanggalIndonesia(namaFile) {
+        try {
+            const timestamp = parseInt(namaFile.split('-')[1]);
+            if (isNaN(timestamp)) return '';
+            const opsi = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+            return new Date(timestamp).toLocaleDateString('id-ID', opsi);
+        } catch (e) { return ''; }
+    }
+
+    fetch('/daftar-foto')
+        .then(response => response.json())
+        .then(fotos => {
+            const galeri = document.getElementById('galeriWeb');
+            const btnMore = document.getElementById('btnMore');
+            
+            if (fotos.length === 0) {
+                galeri.innerHTML = '<p style="color: #868e96; font-size: 14px;">Belum ada laporan foto.</p>';
+                return;
+            }
+            
+            fotos.forEach((foto, index) => {
+                const box = document.createElement('div');
+                box.className = 'foto-box';
+                
+                if (index >= BATAS_AWAL) { box.style.display = 'none'; }
+
+                const img = document.createElement('img');
+                img.src = '/uploads/' + foto;
+                img.onclick = function() { bukaFoto('/uploads/' + foto); };
+
+                const teksTanggal = document.createElement('p');
+                teksTanggal.className = 'teks-tanggal';
+                teksTanggal.innerText = formatTanggalIndonesia(foto);
+
+                const areaTombol = document.createElement('div');
+                areaTombol.className = 'area-tombol';
+
+                const linkUnduh = document.createElement('a');
+                linkUnduh.href = '/uploads/' + foto;
+                linkUnduh.download = foto;
+                linkUnduh.className = 'btn-action btn-download';
+                linkUnduh.innerText = 'Unduh';
+
+                const btnHapus = document.createElement('button');
+                btnHapus.className = 'btn-action btn-delete';
+                btnHapus.innerText = 'Hapus';
+                btnHapus.onclick = function(e) {
+                    e.stopPropagation();
+                    if (confirm('Yakin ingin menghapus foto ini?')) {
+                        fetch('/hapus-foto/' + foto, { method: 'DELETE' })
+                            .then(res => { if (res.ok) window.location.reload(); });
+                    }
+                };
+
+                areaTombol.appendChild(linkUnduh);
+                areaTombol.appendChild(btnHapus);
+
+                box.appendChild(img);
+                box.appendChild(teksTanggal);
+                box.appendChild(areaTombol);
+                
+                galeri.appendChild(box);
+                semuaFotoBlok.push(box);
+            });
+
+            if (fotos.length > BATAS_AWAL) { btnMore.style.display = 'block'; }
+        });
+
+    function bukaFoto(src) {
+        document.getElementById('fotoBesar').src = src;
+        document.getElementById('boxLightbox').style.display = 'flex';
+    }
+    
+    function tutupFoto() { 
+        document.getElementById('boxLightbox').style.display = 'none'; 
+    }
+
+    // Fungsi pintar bolak-balik Tampilkan Lebih Banyak / Sedikit
+    function tampilkanSemuaFoto() {
+        const btnMore = document.getElementById('btnMore');
+        
+        if (btnMore.innerText === "Tampilkan Lebih Banyak") {
+            semuaFotoBlok.forEach(box => box.style.display = 'block');
+            btnMore.innerText = "Tampilkan Lebih Sedikit";
+            btnMore.scrollIntoView({ behavior: 'smooth', block: 'end' });
+        } else {
+            semuaFotoBlok.forEach((box, index) => {
+                if (index >= BATAS_AWAL) {
+                    box.style.display = 'none';
+                }
+            });
+            btnMore.innerText = "Tampilkan Lebih Banyak";
+            document.querySelector('.section-title').scrollIntoView({ behavior: 'smooth' });
+        }
+    }
+</script>
+</body>
+</html>
