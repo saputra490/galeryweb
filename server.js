@@ -94,17 +94,19 @@ app.get('/logout', (req, res) => {
     res.redirect('/login-page');
 });
 
-// ENDPOINT UPLOAD REAL - CLOUDINARY
+// ENDPOINT UPLOAD OPTIMAL UNTUK VERCEL SERVERLESS
 app.post('/upload', upload.array('foto'), (req, res) => {
     try {
         if (!req.files || req.files.length === 0) {
-            return res.status(400).send("Tidak ada file foto yang dipilih.");
+            return res.status(400).json({ sukses: false, pesan: "Tidak ada file foto yang dipilih." });
         }
 
         const catatanTeks = req.body.catatanTeks || "";
         const sekarang = new Date();
         const tanggalKey = sekarang.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
-        const jamMenit = sekarang.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+        const jamMenit = Thermal = sekarang.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+
+        const listFotoTerupload = [];
 
         req.files.forEach(file => {
             const dataFotoBaru = { 
@@ -121,11 +123,13 @@ app.post('/upload', upload.array('foto'), (req, res) => {
                 terhapus: false
             };
             DB_Foto.push(dataFotoBaru);
+            listFotoTerupload.push(dataFotoBaru);
         });
 
-        res.sendStatus(200);
+        // Kirim response JSON sukses agar frontend tahu upload ke Cloudinary berhasil
+        res.status(200).json({ sukses: true, data: listFotoTerupload });
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        res.status(500).json({ sukses: false, error: error.message });
     }
 });
 
