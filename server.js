@@ -3,53 +3,74 @@ const path = require('path');
 const session = require('express-session');
 const cors = require('cors');
 const cloudinary = require('cloudinary').v2;
+const multer = require('multer');
+const { CloudinaryStorage } = require('multer-storage-cloudinary');
 
 const app = express();
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+app.use(cors());
 
-// Konfigurasi Cloudinary menggunakan Variabel Lingkungan Vercel (Environment Variables)
+// KONFIGURASI KREDENSIAL CLOUDINARY (Diambil dari Env Vercel)
 cloudinary.config({
     cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
     api_key: process.env.CLOUDINARY_API_KEY,
     api_secret: process.env.CLOUDINARY_API_SECRET
 });
 
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true, limit: '10mb' }));
-app.use(cors());
+// STORAGE CONFIGURATION UNTUK MULTER CLOUDINARY
+const storage = new CloudinaryStorage({
+    cloudinary: cloudinary,
+    params: {
+        folder: 'galeri_foto',
+        allowed_formats: ['jpg', 'jpeg', 'png', 'webp']
+    }
+});
+const upload = multer({ storage: storage });
 
+// PENGATURAN UMUR SESI LOGIN - 5 MENIT INAKTIF
 app.use(session({
     secret: 'kunci-galeri-rahasia-multi-user-9988',
     resave: false,
     saveUninitialized: false,
     rolling: true,
-    cookie: { maxAge: 5 * 60 * 1000, secure: false }
+    cookie: { 
+        maxAge: 5 * 60 * 1000, 
+        secure: false
+    }
 }));
 
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Menggunakan penyimpanan berbasis objek array konstan data ter-sinkronisasi
 let DB_Foto = [];
 let listPengguna = [];
 
+const ADMIN_CONFIG = {
+    username: "admin",
+    password: "pw ghesityanuari"
+};
+
 const styleElegan = `
 <style>
-    * { box-sizing: border-box; font-family: -apple-system, sans-serif; margin: 0; padding: 0; }
+    * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 0; padding: 0; }
     body { background-color: #f8f9fa; display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 20px; }
-    .card { background: #ffffff; width: 100%; max-width: 400px; padding: 40px 30px; border-radius: 24px; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05); text-align: center; }
+    .card { background: #ffffff; width: 100%; max-width: 400px; padding: 40px 30px; border-radius: 24px; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05); text-align: center; position: relative; }
     .status-badge { display: inline-block; padding: 6px 16px; background-color: #e8f5e9; color: #2e7d32; border-radius: 20px; font-size: 13px; font-weight: 600; margin-bottom: 20px; }
     h2 { font-size: 24px; font-weight: 700; color: #1a1a1a; margin-bottom: 8px; }
     p.subtitle { color: #757575; font-size: 14px; margin-bottom: 30px; }
     .input-group { text-align: left; margin-bottom: 20px; }
-    .input-group label { display: block; font-size: 13px; font-weight: 600; color: #424242; margin-bottom: 8px; }
-    .input-group input { width: 100%; padding: 14px 18px; background-color: #f5f5f5; border: 1px solid #eeeeee; border-radius: 14px; font-size: 15px; outline: none; }
-    .btn-primary { width: 100%; padding: 16px; background-color: #1a1a1a; color: #ffffff; border: none; border-radius: 14px; font-size: 16px; font-weight: 600; cursor: pointer; }
+    .input-group label { display: block; font-size: 13px; font-weight: 600; color: #424242; margin-bottom: 8px; margin-left: 4px; }
+    .input-group input { width: 100%; padding: 14px 18px; background-color: #f5f5f5; border: 1px solid #eeeeee; border-radius: 14px; font-size: 15px; outline: none; transition: 0.2s; }
+    .input-group input:focus { background-color: #ffffff; border-color: #1a1a1a; box-shadow: 0 0 0 4px rgba(0,0,0,0.05); }
+    .btn-primary { width: 100%; padding: 16px; background-color: #1a1a1a; color: #ffffff; border: none; border-radius: 14px; font-size: 16px; font-weight: 600; cursor: pointer; margin-top: 10px; transition: 0.2s; }
     .footer-link { margin-top: 25px; padding-top: 20px; border-top: 1px solid #f0f0f0; font-size: 14px; color: #757575; }
-    .footer-link a { color: #1a1a1a; text-decoration: none; font-weight: 700; }
+    .footer-link a { color: #1a1a1a; text-decoration: none; font-weight: 700; margin-left: 5px; }
+    .toast-login { position: fixed; top: -100px; left: 50%; transform: translateX(-50%); padding: 14px 24px; border-radius: 14px; font-size: 14px; font-weight: 600; box-shadow: 0 8px 30px rgba(0,0,0,0.12); z-index: 10000; transition: top 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); background: #fff5f5; color: #e53e3e; border: 1px solid #fed7d7; width: calc(100% - 40px); max-width: 360px; text-align: center; }
 </style>
 `;
 
 function halamanNotifKustom(pesan, isError, tujuanRedirect) {
-    return `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Pemberitahuan</title><style>body { background: #f8f9fa; display: flex; justify-content: center; align-items: center; min-height: 100vh; font-family: -apple-system, sans-serif; }.notif-box { background: ${isError ? '#fff5f5' : '#e8f5e9'}; color: ${isError ? '#e53e3e' : '#2e7d32'}; padding: 20px 32px; border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); font-weight: 600; }</style></head><body><div class="notif-box">${pesan}</div><script>setTimeout(() => { window.location.href = "${tujuanRedirect}"; }, 1200);</script></body></html>`;
+    return `<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Pemberitahuan</title><style>body { background: #f8f9fa; display: flex; justify-content: center; align-items: center; min-height: 100vh; font-family: -apple-system, sans-serif; margin: 0; }.notif-box { background: ${isError ? '#fff5f5' : '#e8f5e9'}; color: ${isError ? '#e53e3e' : '#2e7d32'}; padding: 20px 32px; border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); font-weight: 600; font-size: 16px; text-align: center; max-width: 90%; }</style></head><body><div class="notif-box">${pesan}</div><script>setTimeout(() => { window.location.href = "${tujuanRedirect}"; }, 1200);</script></body></html>`;
 }
 
 app.get('/cek-sesi', (req, res) => {
@@ -58,11 +79,11 @@ app.get('/cek-sesi', (req, res) => {
 });
 
 app.get('/', (req, res) => {
-    res.send(`<!DOCTYPE html><html lang="id"><head><meta charset="UTF-8"><title>Daftar Akun</title>${styleElegan}</head><body><div class="card"><div class="status-badge">Gabung Sekarang</div><h2>Daftar Akun</h2><p class="subtitle">Buat akun untuk mulai mengelola galeri foto anda</p><form action="/register" method="POST"><div class="input-group"><label>Nama Pengguna</label><input type="text" name="username" required></div><div class="input-group"><label>Kata Sandi</label><input type="password" name="password" required></div><button type="submit" class="btn-primary">Daftar Akun</button></form><div class="footer-link">Sudah memiliki akun? <a href="/login-page">Masuk</a></div></div></body></html>`);
+    res.send(`<!DOCTYPE html><html lang="id"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Daftar Akun</title>${styleElegan}</head><body><div class="card"><div class="status-badge">Gabung Sekarang</div><h2>Daftar Akun</h2><p class="subtitle">Buat akun untuk mulai mengelola galeri foto anda</p><form action="/register" method="POST"><div class="input-group"><label>Nama Pengguna</label><input type="text" name="username" placeholder="Buat nama pengguna" required></div><div class="input-group"><label>Kata Sandi</label><input type="password" name="password" placeholder="Buat kata sandi" required></div><button type="submit" class="btn-primary">Daftar Akun</button></form><div class="footer-link">Sudah memiliki akun? <a href="/login-page">Masuk di sini</a></div></div></body></html>`);
 });
 
 app.get('/login-page', (req, res) => {
-    res.send(`<!DOCTYPE html><html lang="id"><head><meta charset="UTF-8"><title>Login</title>${styleElegan}</head><body><div class="card"><div class="status-badge">Selamat Datang</div><h2>Masuk</h2><p class="subtitle">Masuk ke akun anda untuk melanjutkan</p><form action="/login" method="POST"><div class="input-group"><label>Nama Pengguna</label><input type="text" name="username" required></div><div class="input-group"><label>Kata Sandi</label><input type="password" name="password" required></div><button type="submit" class="btn-primary">Masuk</button></form></div></body></html>`);
+    res.send(`<!DOCTYPE html><html lang="id"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Login</title>${styleElegan}</head><body><div id="toastAlert" class="toast-login">⚠️ Sesi Anda telah berakhir (Batas 5 Menit). Silakan login kembali!</div><div class="card"><div class="status-badge">Selamat Datang</div><h2>Masuk</h2><p class="subtitle">Masuk ke akun anda untuk melanjutkan</p><form action="/login" method="POST"><div class="input-group"><label>Nama Pengguna</label><input type="text" name="username" placeholder="Masukkan nama pengguna" required></div><div class="input-group"><label>Kata Sandi</label><input type="password" name="password" placeholder="Masukkan kata sandi" required></div><button type="submit" class="btn-primary">Masuk Sekarang</button></form><div class="footer-link">Belum punya akun? <a href="/">Daftar di sini</a></div></div><script>if (document.referrer.includes('dashboard.html') || window.location.search.includes('session=expired')) { const toast = document.getElementById('toastAlert'); toast.style.top = '24px'; setTimeout(() => { toast.style.top = '-100px'; }, 4000); }</script></body></html>`);
 });
 
 app.post('/register', (req, res) => {
@@ -90,41 +111,40 @@ app.get('/logout', (req, res) => {
     res.redirect('/login-page');
 });
 
-// ENDPOINT PROSES UPLOAD LANGSUNG KE CLOUDINARY CLOUD STORAGE
-app.post('/upload', async (req, res) => {
+// ENDPOINT UNGHAH REAL - TERINTEGRASI PENYIMPANAN CLOUDINARY
+app.post('/upload', upload.array('foto'), (req, res) => {
     if (!req.session.username) return res.sendStatus(401);
     
     try {
-        const { gambarBase64, catatanTeks } = req.body;
-        if (!gambarBase64) return res.status(400).send("Gambar tidak ditemukan");
+        if (!req.files || req.files.length === 0) {
+            return res.status(400).send("Tidak ada file foto yang dipilih.");
+        }
 
-        // Kirim berkas data URL langsung ke Cloudinary cloud API
-        const hasilUpload = await cloudinary.uploader.upload(gambarBase64, {
-            folder: 'galeri_web'
-        });
-
+        const catatanTeks = req.body.catatanTeks || "";
         const sekarang = new Date();
         const tanggalKey = sekarang.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
-        const jamMenit = sekarang.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+        const jamMenit = agora = sekarang.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
 
-        const dataFotoBaru = { 
-            username: req.session.username.toLowerCase(),
-            namaFile: hasilUpload.secure_url, // Menggunakan URL awan publik permanen
-            teks: catatanTeks || "",
-            ukuran: hasilUpload.bytes,
-            tanggal: tanggalKey,
-            waktu: jamMenit,
-            dilihat: 0,
-            diunduh: 0,
-            favorit: false,
-            terhapus: false
-        };
+        req.files.forEach(file => {
+            const dataFotoBaru = { 
+                username: req.session.username.toLowerCase(),
+                namaFile: file.filename,
+                url: file.path, // Menyimpan URL Cloudinary asli gambar
+                teks: catatanTeks,
+                ukuran: file.size,
+                tanggal: tanggalKey,
+                waktu: jamMenit,
+                dilihat: 0,
+                diunduh: 0,
+                favorit: false,
+                terhapus: false
+            };
+            DB_Foto.push(dataFotoBaru);
+        });
 
-        DB_Foto.push(dataFotoBaru);
-        res.status(200).json({ sukses: true });
+        res.sendStatus(200);
     } catch (error) {
-        console.error(error);
-        res.status(500).send("Gagal mengunggah gambar ke Cloudinary");
+        res.status(500).json({ error: error.message });
     }
 });
 
@@ -134,11 +154,9 @@ app.get('/daftar-foto', (req, res) => {
     res.json([...fotoSaya].reverse());
 });
 
-// FIX RUTE TOMBOL FAVORIT
 app.post('/favorit/:namaFile', (req, res) => {
     if (!req.session.username) return res.sendStatus(401);
-    const decodeFile = decodeURIComponent(req.params.namaFile);
-    const foto = DB_Foto.find(item => item.namaFile === decodeFile && item.username.toLowerCase() === req.session.username.toLowerCase());
+    const foto = DB_Foto.find(item => item.namaFile === req.params.namaFile && item.username.toLowerCase() === req.session.username.toLowerCase());
     if (foto) {
         foto.favorit = !foto.favorit;
         res.json({ sukses: true, favorit: foto.favorit });
@@ -147,11 +165,31 @@ app.post('/favorit/:namaFile', (req, res) => {
     }
 });
 
-// SINKRONISASI LOGIKA HAPUS DAN TONG SAMPAH
+app.post('/hitung-lihat/:namaFile', (req, res) => {
+    if (!req.session.username) return res.sendStatus(401);
+    const foto = DB_Foto.find(item => item.namaFile === req.params.namaFile);
+    if (foto) {
+        foto.dilihat = (foto.dilihat || 0) + 1;
+        res.json({ sukses: true, dilihat: foto.dilihat });
+    } else {
+        res.sendStatus(404);
+    }
+});
+
+app.post('/hitung-unduh/:namaFile', (req, res) => {
+    if (!req.session.username) return res.sendStatus(401);
+    const foto = DB_Foto.find(item => item.namaFile === req.params.namaFile);
+    if (foto) {
+        foto.diunduh = (foto.diunduh || 0) + 1;
+        res.json({ sukses: true, diunduh: foto.diunduh });
+    } else {
+        res.sendStatus(404);
+    }
+});
+
 app.post('/hapus/:namaFile', (req, res) => {
     if (!req.session.username) return res.sendStatus(401);
-    const decodeFile = decodeURIComponent(req.params.namaFile);
-    const foto = DB_Foto.find(item => item.namaFile === decodeFile && item.username.toLowerCase() === req.session.username.toLowerCase());
+    const foto = DB_Foto.find(item => item.namaFile === req.params.namaFile && item.username.toLowerCase() === req.session.username.toLowerCase());
     if (foto) {
         foto.terhapus = true;
         res.json({ sukses: true });
@@ -162,8 +200,7 @@ app.post('/hapus/:namaFile', (req, res) => {
 
 app.post('/pulihkan/:namaFile', (req, res) => {
     if (!req.session.username) return res.sendStatus(401);
-    const decodeFile = decodeURIComponent(req.params.namaFile);
-    const foto = DB_Foto.find(item => item.namaFile === decodeFile && item.username.toLowerCase() === req.session.username.toLowerCase());
+    const foto = DB_Foto.find(item => item.namaFile === req.params.namaFile && item.username.toLowerCase() === req.session.username.toLowerCase());
     if (foto) {
         foto.terhapus = false;
         res.json({ sukses: true });
@@ -174,8 +211,7 @@ app.post('/pulihkan/:namaFile', (req, res) => {
 
 app.post('/hapus-permanen/:namaFile', (req, res) => {
     if (!req.session.username) return res.sendStatus(401);
-    const decodeFile = decodeURIComponent(req.params.namaFile);
-    const indeks = DB_Foto.findIndex(item => item.namaFile === decodeFile && item.username.toLowerCase() === req.session.username.toLowerCase());
+    const indeks = DB_Foto.findIndex(item => item.namaFile === req.params.namaFile && item.username.toLowerCase() === req.session.username.toLowerCase());
     if (indeks !== -1) {
         DB_Foto.splice(indeks, 1);
         res.json({ sukses: true });
@@ -184,9 +220,62 @@ app.post('/hapus-permanen/:namaFile', (req, res) => {
     }
 });
 
+app.post('/tong-sampah/pindahkan', (req, res) => {
+    if (!req.session.username) return res.sendStatus(401);
+    const { files } = req.body;
+    if (!files || !Array.isArray(files)) return res.sendStatus(400);
+    DB_Foto.forEach(item => {
+        if (item.username.toLowerCase() === req.session.username.toLowerCase() && files.includes(item.namaFile)) {
+            item.terhapus = true;
+        }
+    });
+    res.json({ sukses: true });
+});
+
+app.post('/tong-sampah/pulihkan', (req, res) => {
+    if (!req.session.username) return res.sendStatus(401);
+    const { files } = req.body;
+    if (!files || !Array.isArray(files)) return res.sendStatus(400);
+    DB_Foto.forEach(item => {
+        if (item.username.toLowerCase() === req.session.username.toLowerCase() && files.includes(item.namaFile)) {
+            item.terhapus = false;
+        }
+    });
+    res.json({ sukses: true });
+});
+
+app.post('/tong-sampah/permanen', (req, res) => {
+    if (!req.session.username) return res.sendStatus(401);
+    const { files } = req.body;
+    if (!files || !Array.isArray(files)) return res.sendStatus(400);
+    DB_Foto = DB_Foto.filter(item => !(item.username.toLowerCase() === req.session.username.toLowerCase() && files.includes(item.namaFile)));
+    res.json({ sukses: true });
+});
+
+app.get('/admin-sakti', (req, res) => {
+    if (req.session.isAdmin) {
+        let barisTabel = '';
+        listPengguna.forEach((u, index) => {
+            barisTabel += `<tr><td style="padding:12px;border:1px solid #ddd;text-align:center;">${index+1}</td><td style="padding:12px;border:1px solid #ddd;font-weight:bold;">${u.username}</td><td style="padding:12px;border:1px solid #ddd;color:#e53e3e;">${u.password}</td></tr>`;
+        });
+        return res.send(`<!DOCTYPE html><html><head><title>Portal Admin</title><style>* {box-sizing:border-box;font-family:-apple-system,sans-serif;} body{background:#f4f6f8;padding:30px;display:flex;justify-content:center;} .wadah{background:#fff;width:100%;max-width:500px;padding:25px;border-radius:16px;box-shadow:0 4px 15px rgba(0,0,0,0.05);} table{width:100%;border-collapse:collapse;margin-top:15px;} th{background:#1a1a1a;color:#fff;padding:12px;} .btn{display:block;text-align:center;margin-top:20px;padding:12px;background:#f5f5f5;color:#333;text-decoration:none;border-radius:10px;font-weight:600;}</style></head><body><div class="wadah"><h2>🔑 Data Akun</h2><table><thead><tr><th>No</th><th>Username</th><th>Password</th></tr></thead><tbody>${barisTabel}</tbody></table><a href="/dashboard.html" class="btn">◀ Dashboard</a></div></body></html>`);
+    }
+    res.send(`<!DOCTYPE html><html><head><title>Login Admin</title><style>*{box-sizing:border-box;font-family:-apple-system,sans-serif;} body{background:#f4f6f8;display:flex;justify-content:center;align-items:center;min-height:100vh;} .box{background:#fff;width:360px;padding:30px;border-radius:16px;text-align:center;} input{width:100%;padding:12px;margin-bottom:14px;border:1px solid #ddd;border-radius:8px;} button{width:100%;padding:12px;background:#1a1a1a;color:#fff;border:none;border-radius:8px;font-weight:600;}</style></head><body><div class="box"><h3>🔒 Portal Admin</h3><form action="/admin-sakti-auth" method="POST"><input type="text" name="admUser" placeholder="Username" required><input type="password" name="admPass" placeholder="Password" required><button type="submit">Validasi</button></form></div></body></html>`);
+});
+
+app.post('/admin-sakti-auth', (req, res) => {
+    const { admUser, admPass } = req.body;
+    if (admUser === ADMIN_CONFIG.username && admPass === ADMIN_CONFIG.password) {
+        req.session.isAdmin = true;
+        res.redirect('/admin-sakti');
+    } else {
+        res.send(halamanNotifKustom("Kredensial Admin Salah!", true, "/admin-sakti"));
+    }
+});
+
 module.exports = app;
 
 const PORT = process.env.PORT || 8080;
 if (process.env.NODE_ENV !== 'production') {
-    app.listen(PORT, '0.0.0.0', () => console.log(`Server lokal aktif di port ${PORT}`));
+    app.listen(PORT, '0.0.0.0', () => console.log(`Server berjalan di port ${PORT}`));
 }
