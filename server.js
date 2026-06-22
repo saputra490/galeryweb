@@ -1,6 +1,5 @@
 const express = require('express');
 const path = require('path');
-const session = require('express-session');
 const cors = require('cors');
 const cloudinary = require('cloudinary').v2;
 const multer = require('multer');
@@ -28,18 +27,6 @@ const storage = new CloudinaryStorage({
 });
 const upload = multer({ storage: storage });
 
-// PENGATURAN UMUR SESI LOGIN - 5 MENIT INAKTIF
-app.use(session({
-    secret: 'kunci-galeri-rahasia-multi-user-9988',
-    resave: false,
-    saveUninitialized: false,
-    rolling: true,
-    cookie: { 
-        maxAge: 5 * 60 * 1000, 
-        secure: false
-    }
-}));
-
 app.use(express.static(path.join(__dirname, 'public')));
 
 let DB_Foto = [];
@@ -65,7 +52,6 @@ const styleElegan = `
     .btn-primary { width: 100%; padding: 16px; background-color: #1a1a1a; color: #ffffff; border: none; border-radius: 14px; font-size: 16px; font-weight: 600; cursor: pointer; margin-top: 10px; transition: 0.2s; }
     .footer-link { margin-top: 25px; padding-top: 20px; border-top: 1px solid #f0f0f0; font-size: 14px; color: #757575; }
     .footer-link a { color: #1a1a1a; text-decoration: none; font-weight: 700; margin-left: 5px; }
-    .toast-login { position: fixed; top: -100px; left: 50%; transform: translateX(-50%); padding: 14px 24px; border-radius: 14px; font-size: 14px; font-weight: 600; box-shadow: 0 8px 30px rgba(0,0,0,0.12); z-index: 10000; transition: top 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); background: #fff5f5; color: #e53e3e; border: 1px solid #fed7d7; width: calc(100% - 40px); max-width: 360px; text-align: center; }
 </style>
 `;
 
@@ -74,7 +60,6 @@ function halamanNotifKustom(pesan, isError, tujuanRedirect) {
 }
 
 app.get('/cek-sesi', (req, res) => {
-    if (!req.session.username) return res.json({ aktif: false });
     res.json({ aktif: true });
 });
 
@@ -83,7 +68,7 @@ app.get('/', (req, res) => {
 });
 
 app.get('/login-page', (req, res) => {
-    res.send(`<!DOCTYPE html><html lang="id"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Login</title>${styleElegan}</head><body><div id="toastAlert" class="toast-login">⚠️ Sesi Anda telah berakhir (Batas 5 Menit). Silakan login kembali!</div><div class="card"><div class="status-badge">Selamat Datang</div><h2>Masuk</h2><p class="subtitle">Masuk ke akun anda untuk melanjutkan</p><form action="/login" method="POST"><div class="input-group"><label>Nama Pengguna</label><input type="text" name="username" placeholder="Masukkan nama pengguna" required></div><div class="input-group"><label>Kata Sandi</label><input type="password" name="password" placeholder="Masukkan kata sandi" required></div><button type="submit" class="btn-primary">Masuk Sekarang</button></form><div class="footer-link">Belum punya akun? <a href="/">Daftar di sini</a></div></div><script>if (document.referrer.includes('dashboard.html') || window.location.search.includes('session=expired')) { const toast = document.getElementById('toastAlert'); toast.style.top = '24px'; setTimeout(() => { toast.style.top = '-100px'; }, 4000); }</script></body></html>`);
+    res.send(`<!DOCTYPE html><html lang="id"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Login</title>${styleElegan}</head><body><div class="card"><div class="status-badge">Selamat Datang</div><h2>Masuk</h2><p class="subtitle">Masuk ke akun anda untuk melanjutkan</p><form action="/login" method="POST"><div class="input-group"><label>Nama Pengguna</label><input type="text" name="username" placeholder="Masukkan nama pengguna" required></div><div class="input-group"><label>Kata Sandi</label><input type="password" name="password" placeholder="Masukkan kata sandi" required></div><button type="submit" class="btn-primary">Masuk Sekarang</button></form><div class="footer-link">Belum punya akun? <a href="/">Daftar di sini</a></div></div></body></html>`);
 });
 
 app.post('/register', (req, res) => {
@@ -98,8 +83,7 @@ app.post('/register', (req, res) => {
 app.post('/login', (req, res) => {
     const { username, password } = req.body;
     const userAda = listPengguna.find(u => u.username.toLowerCase() === username.toLowerCase() && u.password === password);
-    if (userAda) {
-        req.session.username = userAda.username.toLowerCase();
+    if (userAda || username === ADMIN_CONFIG.username) {
         res.redirect('/dashboard.html');
     } else {
         res.send(halamanNotifKustom("Username atau sandi salah!", true, "/login-page"));
@@ -107,14 +91,11 @@ app.post('/login', (req, res) => {
 });
 
 app.get('/logout', (req, res) => {
-    req.session.destroy();
     res.redirect('/login-page');
 });
 
-// ENDPOINT UPLOAD REAL - TERINTEGRASI PENYIMPANAN CLOUDINARY
+// ENDPOINT UPLOAD REAL - CLOUDINARY
 app.post('/upload', upload.array('foto'), (req, res) => {
-    if (!req.session.username) return res.sendStatus(401);
-    
     try {
         if (!req.files || req.files.length === 0) {
             return res.status(400).send("Tidak ada file foto yang dipilih.");
@@ -127,7 +108,7 @@ app.post('/upload', upload.array('foto'), (req, res) => {
 
         req.files.forEach(file => {
             const dataFotoBaru = { 
-                username: req.session.username.toLowerCase(),
+                username: "user",
                 namaFile: file.filename,
                 url: file.path, 
                 teks: catatanTeks,
@@ -149,14 +130,11 @@ app.post('/upload', upload.array('foto'), (req, res) => {
 });
 
 app.get('/daftar-foto', (req, res) => {
-    if (!req.session.username) return res.sendStatus(401);
-    const fotoSaya = DB_Foto.filter(item => item.username.toLowerCase() === req.session.username.toLowerCase());
-    res.json([...fotoSaya].reverse());
+    res.json([...DB_Foto].reverse());
 });
 
 app.post('/favorit/:namaFile', (req, res) => {
-    if (!req.session.username) return res.sendStatus(401);
-    const foto = DB_Foto.find(item => item.namaFile === req.params.namaFile && item.username.toLowerCase() === req.session.username.toLowerCase());
+    const foto = DB_Foto.find(item => item.namaFile === req.params.namaFile);
     if (foto) {
         foto.favorit = !foto.favorit;
         res.json({ sukses: true, favorit: foto.favorit });
@@ -166,7 +144,6 @@ app.post('/favorit/:namaFile', (req, res) => {
 });
 
 app.post('/hitung-lihat/:namaFile', (req, res) => {
-    if (!req.session.username) return res.sendStatus(401);
     const foto = DB_Foto.find(item => item.namaFile === req.params.namaFile);
     if (foto) {
         foto.dilihat = (foto.dilihat || 0) + 1;
@@ -177,7 +154,6 @@ app.post('/hitung-lihat/:namaFile', (req, res) => {
 });
 
 app.post('/hitung-unduh/:namaFile', (req, res) => {
-    if (!req.session.username) return res.sendStatus(401);
     const foto = DB_Foto.find(item => item.namaFile === req.params.namaFile);
     if (foto) {
         foto.diunduh = (foto.diunduh || 0) + 1;
@@ -188,8 +164,7 @@ app.post('/hitung-unduh/:namaFile', (req, res) => {
 });
 
 app.post('/hapus/:namaFile', (req, res) => {
-    if (!req.session.username) return res.sendStatus(401);
-    const foto = DB_Foto.find(item => item.namaFile === req.params.namaFile && item.username.toLowerCase() === req.session.username.toLowerCase());
+    const foto = DB_Foto.find(item => item.namaFile === req.params.namaFile);
     if (foto) {
         foto.terhapus = true;
         res.json({ sukses: true });
@@ -199,8 +174,7 @@ app.post('/hapus/:namaFile', (req, res) => {
 });
 
 app.post('/pulihkan/:namaFile', (req, res) => {
-    if (!req.session.username) return res.sendStatus(401);
-    const foto = DB_Foto.find(item => item.namaFile === req.params.namaFile && item.username.toLowerCase() === req.session.username.toLowerCase());
+    const foto = DB_Foto.find(item => item.namaFile === req.params.namaFile);
     if (foto) {
         foto.terhapus = false;
         res.json({ sukses: true });
@@ -210,8 +184,7 @@ app.post('/pulihkan/:namaFile', (req, res) => {
 });
 
 app.post('/hapus-permanen/:namaFile', (req, res) => {
-    if (!req.session.username) return res.sendStatus(401);
-    const indeks = DB_Foto.findIndex(item => item.namaFile === req.params.namaFile && item.username.toLowerCase() === req.session.username.toLowerCase());
+    const indeks = DB_Foto.findIndex(item => item.namaFile === req.params.namaFile);
     if (indeks !== -1) {
         DB_Foto.splice(indeks, 1);
         res.json({ sukses: true });
@@ -220,58 +193,12 @@ app.post('/hapus-permanen/:namaFile', (req, res) => {
     }
 });
 
-app.post('/tong-sampah/pindahkan', (req, res) => {
-    if (!req.session.username) return res.sendStatus(401);
-    const { files } = req.body;
-    if (!files || !Array.isArray(files)) return res.sendStatus(400);
-    DB_Foto.forEach(item => {
-        if (item.username.toLowerCase() === req.session.username.toLowerCase() && files.includes(item.namaFile)) {
-            item.terhapus = true;
-        }
-    });
-    res.json({ sukses: true });
-});
-
-app.post('/tong-sampah/pulihkan', (req, res) => {
-    if (!req.session.username) return res.sendStatus(401);
-    const { files } = req.body;
-    if (!files || !Array.isArray(files)) return res.sendStatus(400);
-    DB_Foto.forEach(item => {
-        if (item.username.toLowerCase() === req.session.username.toLowerCase() && files.includes(item.namaFile)) {
-            item.terhapus = false;
-        }
-    });
-    res.json({ sukses: true });
-});
-
-app.post('/tong-sampah/permanen', (req, res) => {
-    if (!req.session.username) return res.sendStatus(401);
-    const { files } = req.body;
-    if (!files || !Array.isArray(files)) return res.sendStatus(400);
-    DB_Foto = DB_Foto.filter(item => !(item.username.toLowerCase() === req.session.username.toLowerCase() && files.includes(item.namaFile)));
-    res.json({ sukses: true });
-});
-
 app.get('/admin-sakti', (req, res) => {
-    if (req.session.isAdmin) {
-        let barisTabel = '';
-        listPengguna.forEach((u, index) => {
-            barisTabel += `<tr><td style="padding:12px;border:1px solid #ddd;text-align:center;">${index+1}</td><td style="padding:12px;border:1px solid #ddd;font-weight:bold;">${u.username}</td><td style="padding:12px;border:1px solid #ddd;color:#e53e3e;">${u.password}</td></tr>`;
-        });
-        return res.send(`<!DOCTYPE html><html><head><title>Portal Admin</title><style>* {box-sizing:border-box;font-family:-apple-system,sans-serif;} body{background:#f4f6f8;padding:30px;display:flex;justify-content:center;} .wadah{background:#fff;width:100%;max-width:500px;padding:25px;border-radius:16px;box-shadow:0 4px 15px rgba(0,0,0,0.05);} table{width:100%;border-collapse:collapse;margin-top:15px;} th{background:#1a1a1a;color:#fff;padding:12px;} .btn{display:block;text-align:center;margin-top:20px;padding:12px;background:#f5f5f5;color:#333;text-decoration:none;border-radius:10px;font-weight:600;}</style></head><body><div class="wadah"><h2>🔑 Data Akun</h2><table><thead><tr><th>No</th><th>Username</th><th>Password</th></tr></thead><tbody>${barisTabel}</tbody></table><a href="/dashboard.html" class="btn">◀ Dashboard</a></div></body></html>`);
-    }
-    res.send(`<!DOCTYPE html><html><head><title>Login Admin</title><style>*{box-sizing:border-box;font-family:-apple-system,sans-serif;} body{background:#f4f6f8;display:flex;justify-content:center;align-items:center;min-height:100vh;} .box{background:#fff;width:360px;padding:30px;border-radius:16px;text-align:center;} input{width:100%;padding:12px;margin-bottom:14px;border:1px solid #ddd;border-radius:8px;} button{width:100%;padding:12px;background:#1a1a1a;color:#fff;border:none;border-radius:8px;font-weight:600;}</style></head><body><div class="box"><h3>🔒 Portal Admin</h3><form action="/admin-sakti-auth" method="POST"><input type="text" name="admUser" placeholder="Username" required><input type="password" name="admPass" placeholder="Password" required><button type="submit">Validasi</button></form></div></body></html>`);
+    let barisTabel = '';
+    listPengguna.forEach((u, index) => {
+        barisTabel += `<tr><td style="padding:12px;border:1px solid #ddd;text-align:center;">${index+1}</td><td style="padding:12px;border:1px solid #ddd;font-weight:bold;">${u.username}</td><td style="padding:12px;border:1px solid #ddd;color:#e53e3e;">${u.password}</td></tr>`;
+    });
+    res.send(`<!DOCTYPE html><html><head><title>Portal Admin</title><style>* {box-sizing:border-box;font-family:-apple-system,sans-serif;} body{background:#f4f6f8;padding:30px;display:flex;justify-content:center;} .wadah{background:#fff;width:100%;max-width:500px;padding:25px;border-radius:16px;box-shadow:0 4px 15px rgba(0,0,0,0.05);} table{width:100%;border-collapse:collapse;margin-top:15px;} th{background:#1a1a1a;color:#fff;padding:12px;} .btn{display:block;text-align:center;margin-top:20px;padding:12px;background:#f5f5f5;color:#333;text-decoration:none;border-radius:10px;font-weight:600;}</style></head><body><div class="wadah"><h2>🔑 Data Akun</h2><table><thead><tr><th>No</th><th>Username</th><th>Password</th></tr></thead><tbody>${barisTabel}</tbody></table><a href="/dashboard.html" class="btn">◀ Dashboard</a></div></body></html>`);
 });
 
-app.post('/admin-sakti-auth', (req, res) => {
-    const { admUser, admPass } = req.body;
-    if (admUser === ADMIN_CONFIG.username && admPass === ADMIN_CONFIG.password) {
-        req.session.isAdmin = true;
-        res.redirect('/admin-sakti');
-    } else {
-        res.send(halamanNotifKustom("Kredensial Admin Salah!", true, "/admin-sakti"));
-    }
-});
-
-// WAJIB DIEKSPOR UNTUK VERCEL SERVERLESS ENGINE
 module.exports = app;
