@@ -11,7 +11,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cors());
 
-// KONFIGURASI KREDENSIAL CLOUDINARY (Diambil dari Env Vercel)
+// KONFIGURASI KREDENSIAL CLOUDINARY
 cloudinary.config({
     cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
     api_key: process.env.CLOUDINARY_API_KEY,
@@ -111,7 +111,7 @@ app.get('/logout', (req, res) => {
     res.redirect('/login-page');
 });
 
-// ENDPOINT UNGHAH REAL - TERINTEGRASI PENYIMPANAN CLOUDINARY
+// ENDPOINT UPLOAD REAL - TERINTEGRASI PENYIMPANAN CLOUDINARY
 app.post('/upload', upload.array('foto'), (req, res) => {
     if (!req.session.username) return res.sendStatus(401);
     
@@ -123,13 +123,13 @@ app.post('/upload', upload.array('foto'), (req, res) => {
         const catatanTeks = req.body.catatanTeks || "";
         const sekarang = new Date();
         const tanggalKey = sekarang.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
-        const jamMenit = agora = sekarang.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+        const jamMenit = sekarang.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
 
         req.files.forEach(file => {
             const dataFotoBaru = { 
                 username: req.session.username.toLowerCase(),
                 namaFile: file.filename,
-                url: file.path, // Menyimpan URL Cloudinary asli gambar
+                url: file.path, 
                 teks: catatanTeks,
                 ukuran: file.size,
                 tanggal: tanggalKey,
@@ -273,9 +273,5 @@ app.post('/admin-sakti-auth', (req, res) => {
     }
 });
 
+// WAJIB DIEKSPOR UNTUK VERCEL SERVERLESS ENGINE
 module.exports = app;
-
-const PORT = process.env.PORT || 8080;
-if (process.env.NODE_ENV !== 'production') {
-    app.listen(PORT, '0.0.0.0', () => console.log(`Server berjalan di port ${PORT}`));
-}
