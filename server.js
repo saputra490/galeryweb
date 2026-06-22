@@ -11,20 +11,18 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cors());
 
-// KONEKSI MONGODB
+// KONEKSI MONGODB GLOBAL POOL
 const uri = process.env.MONGODB_URI;
-let db, koleksiFoto, koleksiPengguna;
+let clientCached = null;
 
-if (uri) {
-    const client = new MongoClient(uri);
-    client.connect()
-        .then(() => {
-            db = client.db('galeri_db');
-            koleksiFoto = db.collection('foto');
-            koleksiPengguna = db.collection('pengguna');
-            console.log("Terhubung ke MongoDB Atlas!");
-        })
-        .catch(err => console.error("Gagal koneksi MongoDB:", err));
+async function dapatkanKoleksi(namaKoleksi) {
+    if (!uri) throw new Error("MONGODB_URI belum diatur di Environment Variables Vercel!");
+    if (!clientCached) {
+        clientCached = new MongoClient(uri);
+        await clientCached.connect();
+    }
+    const db = clientCached.db('galeri_db');
+    return db.collection(namaKoleksi);
 }
 
 // KONFIGURASI CLOUDINARY
@@ -83,35 +81,41 @@ app.get('/login-page', (req, res) => {
 app.post('/register', async (req, res) => {
     const { username, password } = req.body;
     try {
-        if (koleksiPengguna) {
-            const userAda = await koleksiPengguna.findOne({ username: username.toLowerCase() });
-            if (userAda) return res.send(halamanNotifKustom("Username sudah digunakan!", true, "/"));
-            await koleksiPengguna.insertOne({ username: username.toLowerCase(), password });
+        const p_Koleksi = await dapatkanKoleksi('pengguna');
+        const userAda = await p_Koleksi.findOne({ username: username.trim().toLowerCase() });
+        
+        if (userAda) {
+            return res.send(halamanNotifKustom("Username sudah digunakan!", true, "/"));
         }
+        
+        await p_Koleksi.insertOne({ username: username.trim().toLowerCase(), password: password.trim() });
         res.send(halamanNotifKustom("Akun berhasil dibuat!", false, "/login-page"));
-    } catch {
-        res.send(halamanNotifKustom("Gagal mendaftar!", true, "/"));
+    } catch (e) {
+        res.send(halamanNotifKustom(`Gagal mendaftar: ${e.message}`, true, "/"));
     }
 });
 
 app.post('/login', async (req, res) => {
     const { username, password } = req.body;
+    const uClean = username.trim().toLowerCase();
+    const pClean = password.trim();
+
     try {
-        if (username === ADMIN_CONFIG.username && password === ADMIN_CONFIG.password) {
+        if (uClean === ADMIN_CONFIG.username && pClean === ADMIN_CONFIG.password) {
             return res.redirect('/dashboard.html');
         }
-        if (koleksiPengguna) {
-            const userAda = await koleksiPengguna.findOne({ username: username.toLowerCase(), password });
-            if (userAda) return res.redirect('/dashboard.html');
+        
+        const p_Koleksi = await dapatkanKoleksi('pengguna');
+        const userAda = await p_Koleksi.findOne({ username: uClean, password: pClean });
+        
+        if (userAda) {
+            return res.redirect('/dashboard.html');
         }
+        
         res.send(halamanNotifKustom("Username atau sandi salah!", true, "/login-page"));
-    } catch {
-        res.send(halamanNotifKustom("Terjadi kesalahan server!", true, "/login-page"));
+    } catch (e) {
+        res.send(halamanNotifKustom(`Terjadi kesalahan server: ${e.message}`, true, "/login-page"));
     }
-});
-
-app.get('/logout', (req, res) => {
-    res.redirect('/login-page');
 });
 
 app.post('/upload', upload.array('foto'), async (req, res) => {
@@ -124,7 +128,9 @@ app.post('/upload', upload.array('foto'), async (req, res) => {
         const tanggalKey = sekarang.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
         const jamMenit = sekarang.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
 
+        const f_Koleksi = await dapatkanKoleksi('foto');
         const listFotoTerupload = [];
+        
         for (const file of req.files) {
             const dataFotoBaru = { 
                 username: "user",
@@ -139,7 +145,7 @@ app.post('/upload', upload.array('foto'), async (req, res) => {
                 favorit: false,
                 terhapus: false
             };
-            if (koleksiFoto) await koleksiFoto.insertOne(dataFotoBaru);
+            await f_Koleksi.insertOne(dataFotoBaru);
             listFotoTerupload.push(dataFotoBaru);
         }
         res.status(200).json({ sukses: true, data: listFotoTerupload });
@@ -150,31 +156,12 @@ app.post('/upload', upload.array('foto'), async (req, res) => {
 
 app.get('/daftar-foto', async (req, res) => {
     try {
-        if (koleksiFoto) {
-            const data = await koleksiFoto.find({}).sort({ _id: -1 }).toArray();
-            return res.json(data);
-        }
-        res.json([]);
+        const f_Koleksi = await dapatkanKoleksi('foto');
+        const data = await f_Koleksi.find({}).sort({ _id: -1 }).toArray();
+        res.json(data);
     } catch {
         res.json([]);
     }
-});
-
-app.post('/favorit/:namaFile', async (req, res) => {
-    if (!koleksiFoto) return res.sendStatus(500);
-    const foto = await koleksiFoto.findOne({ namaFile: req.params.namaFile });
-    if (foto) {
-        const statusBaru = !foto.favorit;
-        await koleksiFoto.updateOne({ namaFile: req.params.namaFile }, { $set: { favorit: statusBaru } });
-        res.json({ sukses: true, favorit: statusBaru });
-    } else res.sendStatus(404);
-});
-
-app.post('/hapus/:namaFile', async (req, res) => {
-    if (koleksiFoto) {
-        await koleksiFoto.updateOne({ namaFile: req.params.namaFile }, { $set: { terhapus: true } });
-        res.json({ sukses: true });
-    } else res.sendStatus(500);
 });
 
 module.exports = app;
