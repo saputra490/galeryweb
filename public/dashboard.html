@@ -70,6 +70,7 @@
         .btn-favorit { background: #fff1f1; color: #c53030; }
         .btn-favorit.is-fav { background: #e53e3e; color: #fff; }
         .btn-hapus-utama { background: #fff1f1; color: #e53e3e; width: 100%; }
+        .btn-pulih-utama { background: #e8f5e9; color: #2e7d32; width: 100%; }
 
         /* Toast Popup Atas */
         .custom-toast { position: fixed; top: -100px; left: 50%; transform: translateX(-50%); background: #1a1a1a; color: #ffffff; padding: 12px 24px; border-radius: 30px; font-size: 14px; font-weight: 600; box-shadow: 0 4px 15px rgba(0,0,0,0.2); transition: top 0.4s ease; z-index: 10001; }
@@ -173,7 +174,7 @@
     let objekTanggalAktif = new Date();
     let fungsiCallbackModal = null;
 
-    // FUNGSI NOTIFIKASI DIALOG KUSTOM SUBTITUSI WINDOW.CONFIRM
+    // FIX: FUNGSI MODAL DIALOG KUSTOM
     function bukaDialogKustom(pesan, callback, warnaTombolOk = '#e53e3e') {
         document.getElementById('customModalText').innerText = pesan;
         let btnOk = document.getElementById('btnModalConfirmOk');
@@ -184,7 +185,7 @@
 
     function tutupDialogKustom(apakahOke) {
         document.getElementById('customConfirmModal').style.display = 'none';
-        if (apakahOke && fungsiCallbackModal) {
+        if (apakahOke && typeof fungsiCallbackModal === 'function') {
             fungsiCallbackModal();
         }
         fungsiCallbackModal = null;
@@ -293,6 +294,85 @@
         renderTampilanGaleri();
     }
 
+    // FIX: FUNGSI AKSI SATUAN FOTO (HAPUS, FAVORIT, PULIHKAN, PERMANEN)
+    async function toggleAksiFavorit(namaFile) {
+        try {
+            let r = await fetch('/favorit/' + namaFile, { method: 'POST' });
+            if (r.ok) {
+                tampilkanNotifikasi("❤️ Status favorit diperbarui!");
+                dapatkanKoleksiGaleri();
+            }
+        } catch(e) { console.error(e); }
+    }
+
+    function aksiHapusKeSampah(namaFile) {
+        bukaDialogKustom("Pindahkan foto ini ke tong sampah?", async () => {
+            try {
+                let r = await fetch('/hapus/' + namaFile, { method: 'POST' });
+                if (r.ok) {
+                    tampilkanNotifikasi("🗑️ Foto dipindah ke sampah!");
+                    dapatkanKoleksiGaleri();
+                }
+            } catch(e) { console.error(e); }
+        }, '#e53e3e');
+    }
+
+    function aksiPulihkanFoto(namaFile) {
+        bukaDialogKustom("Pulihkan foto ini kembali ke galeri utama?", async () => {
+            try {
+                let r = await fetch('/pulihkan/' + namaFile, { method: 'POST' });
+                if (r.ok) {
+                    tampilkanNotifikasi("✅ Foto berhasil dipulihkan!");
+                    dapatkanKoleksiGaleri();
+                }
+            } catch(e) { console.error(e); }
+        }, '#2e7d32');
+    }
+
+    function aksiHapusPermanen(namaFile) {
+        bukaDialogKustom("Hapus foto ini secara permanen? Tindakan ini tidak bisa dibatalkan!", async () => {
+            try {
+                let r = await fetch('/hapus-permanen/' + namaFile, { method: 'POST' });
+                if (r.ok) {
+                    tampilkanNotifikasi("💥 Foto dihapus permanen!");
+                    dapatkanKoleksiGaleri();
+                }
+            } catch(e) { console.error(e); }
+        }, '#000000');
+    }
+
+    async function prosesUnggahBerkas() {
+        let inputGaleri = document.getElementById('fileGaleriInput');
+        let inputKamera = document.getElementById('fileKameraInput');
+        let catatan = document.getElementById('catatanTeks').value;
+
+        let formData = new FormData();
+        for (let i = 0; i < inputGaleri.files.length; i++) { formData.append('foto', inputGaleri.files[i]); }
+        for (let i = 0; i < inputKamera.files.length; i++) { formData.append('foto', inputKamera.files[i]); }
+        formData.append('catatan', catatan);
+
+        if (inputGaleri.files.length === 0 && inputKamera.files.length === 0) {
+            tampilkanNotifikasi("⚠️ Pilih atau ambil foto terlebih dahulu!");
+            return;
+        }
+
+        tampilkanNotifikasi("⏳ Sedang mengunggah...");
+        try {
+            let r = await fetch('/upload', { method: 'POST', body: formData });
+            if (r.ok) {
+                tampilkanNotifikasi("🚀 Berhasil mengunggah foto!");
+                document.getElementById('catatanTeks').value = '';
+                document.getElementById('fileGaleriInput').value = '';
+                document.getElementById('fileKameraInput').value = '';
+                document.getElementById('statusFileTeks').style.display = 'none';
+                dapatkanKoleksiGaleri();
+            } else {
+                tampilkanNotifikasi("❌ Gagal mengunggah berkas.");
+            }
+        } catch(e) { console.error(e); }
+    }
+
+    // FIX: RENDERING GRID UTAMA & EVENT LISTENER SENTUH LENGKAP
     function renderTampilanGaleri() {
         const grid = document.getElementById('mainGalleryGrid');
         grid.innerHTML = '';
@@ -333,10 +413,11 @@
             imgCont.appendChild(img);
             card.appendChild(imgCont);
 
+            // LOGIKA SELEKSI TEKAN LAMA & KLIK
             let timerTekanLama;
             let sudahBerpindahKeSeleksi = false;
 
-            const fungsiMulaiTekan = (e) => {
+            const fungsiMulaiTekan = () => {
                 sudahBerpindahKeSeleksi = false;
                 timerTekanLama = setTimeout(() => {
                     if (!modeSeleksiMenyala) {
@@ -348,18 +429,11 @@
                 }, 700);
             };
 
-            const fungsiLepasTekan = (e) => {
-                clearTimeout(timerTekanLama);
-            };
-
-            const fungsiKlikBiasa = (e) => {
+            const fungsiLepasTekan = () => { clearTimeout(timerTekanLama); };
+            const fungsiKlikBiasa = () => {
                 if (sudahBerpindahKeSeleksi) return;
-                
-                if (modeSeleksiMenyala) {
-                    cb.checked = !cb.checked;
-                } else {
-                    bukaGambarBesar(foto.namaFile);
-                }
+                if (modeSeleksiMenyala) { cb.checked = !cb.checked; } 
+                else { bukaGambarBesar(foto.namaFile); }
             };
 
             imgCont.addEventListener('touchstart', fungsiMulaiTekan, { passive: true });
@@ -368,63 +442,81 @@
             imgCont.addEventListener('mouseup', fungsiLepasTekan);
             imgCont.addEventListener('click', fungsiKlikBiasa);
 
-            let txt = document.createElement('span');
-            txt.className = 'catatan-text';
-            txt.innerText = foto.teks ? foto.teks : "Tanpa Catatan";
-            card.appendChild(txt);
+            // KONTEN METADATA & UTILS CARD
+            let textCatatan = document.createElement('span');
+            textCatatan.className = 'catatan-text';
+            textCatatan.innerText = foto.catatan || "Tanpa Catatan";
+            card.appendChild(textCatatan);
 
-            let meta = document.createElement('div');
-            meta.className = 'meta-info';
-            meta.innerHTML = `🕒 Pukul ${foto.waktu || '00.00'}`;
-            card.appendChild(meta);
+            let divMeta = document.createElement('div');
+            divMeta.className = 'meta-info';
+            divMeta.innerText = `🕒 Pukul ${foto.waktu || '00:00'}`;
+            card.appendChild(divMeta);
 
-            let stats = document.createElement('div');
-            stats.className = 'stats-info';
-            stats.innerHTML = `<span>👁️ ${foto.dilihat || 0}x</span> <span>📥 ${foto.diunduh || 0}x</span>`;
-            card.appendChild(stats);
+            let divStats = document.createElement('div');
+            divStats.className = 'stats-info';
+            divStats.innerHTML = `👁️ ${foto.views || 0}x &nbsp; 📥 ${foto.downloads || 0}x`;
+            card.appendChild(divStats);
 
-            let btnGroup = document.createElement('div');
-            btnGroup.className = 'card-buttons';
+            // PANEL BUTTON ACTION TERGANTUNG TAB
+            let divButtons = document.createElement('div');
+            divButtons.className = 'card-buttons';
 
             if (kategoriTabAktif !== 'sampah') {
-                btnGroup.innerHTML = `
-                    <div class="row-action-upper">
-                        <button class="btn-card btn-unduh" onclick="prosesUnduhSingle('${foto.namaFile}')">Unduh</button>
-                        <button class="btn-card btn-favorit ${foto.favorit ? 'is-fav' : ''}" onclick="toggleFavoritSingle('${foto.namaFile}')">♥ Favorit</button>
-                    </div>
-                    <button class="btn-card btn-hapus-utama" onclick="prosesHapusSingle('${foto.namaFile}')">Hapus</button>
-                `;
+                let divUpperRow = document.createElement('div');
+                divUpperRow.className = 'row-action-upper';
+
+                let btnUnduh = document.createElement('a');
+                btnUnduh.className = 'btn-card btn-unduh';
+                btnUnduh.href = `/unduh/${foto.namaFile}`;
+                btnUnduh.innerText = "Unduh";
+                btnUnduh.onclick = () => { setTimeout(() => { dapatkanKoleksiGaleri(); }, 1000); };
+                divUpperRow.appendChild(btnUnduh);
+
+                let btnFav = document.createElement('button');
+                btnFav.className = `btn-card btn-favorit ${foto.favorit ? 'is-fav' : ''}`;
+                btnFav.innerText = foto.favorit ? "❤️" : "❤️ Favorit";
+                btnFav.onclick = () => toggleAksiFavorit(foto.namaFile);
+                divUpperRow.appendChild(btnFav);
+
+                divButtons.appendChild(divUpperRow);
+
+                let btnHapus = document.createElement('button');
+                btnHapus.className = 'btn-card btn-hapus-utama';
+                btnHapus.innerText = "Hapus";
+                btnHapus.onclick = () => aksiHapusKeSampah(foto.namaFile);
+                divButtons.appendChild(btnHapus);
             } else {
-                btnGroup.innerHTML = `
-                    <button class="btn-card" style="background:#2d3748; color:#fff;" onclick="prosesPulihkanSingle('${foto.namaFile}')">Pulihkan Foto</button>
-                    <button class="btn-card" style="background:#000000; color:#fff;" onclick="prosesHapusPermanenSingle('${foto.namaFile}')">Hapus Permanen</button>
-                `;
+                let btnPulih = document.createElement('button');
+                btnPulih.className = 'btn-card btn-pulih-utama';
+                btnPulih.innerText = "Pulihkan Foto";
+                btnPulih.onclick = () => aksiPulihkanFoto(foto.namaFile);
+                divButtons.appendChild(btnPulih);
+
+                let btnPermanen = document.createElement('button');
+                btnPermanen.className = 'btn-card btn-hapus-utama';
+                btnPermanen.innerText = "Hapus Permanen";
+                btnPermanen.onclick = () => aksiHapusPermanen(foto.namaFile);
+                divButtons.appendChild(btnPermanen);
             }
-            card.appendChild(btnGroup);
+
+            card.appendChild(divButtons);
             grid.appendChild(card);
         });
     }
 
-    function toggleFavoritSingle(namaFile) {
-        let foto = semuaDataFoto.find(item => item.namaFile === namaFile);
-        if(foto) {
-            foto.favorit = !foto.favorit;
-            tampilkanNotifikasi(foto.favorit ? "❤️ Ditambahkan ke favorit" : "💔 Dihapus dari favorit");
-            renderTampilanGaleri();
-        }
-    }
-
+    // MODE SELEKSI MASAL
     function nyalakanModeSeleksi() {
         modeSeleksiMenyala = true;
         document.getElementById('barManajemenSeleksi').style.display = 'flex';
         document.getElementById('checkAllMaster').checked = false;
         
         let btnAksi = document.getElementById('btnAksiMasal');
-        if(kategoriTabAktif === 'sampah') {
-            btnAksi.innerText = "Hapus Permanen Terpilih";
-            btnAksi.style.background = "#000";
+        if (kategoriTabAktif === 'sampah') {
+            btnAksi.innerText = "Hapus Permanen";
+            btnAksi.style.background = "#000000";
         } else {
-            btnAksi.innerText = "Hapus Foto Terpilih";
+            btnAksi.innerText = "Hapus";
             btnAksi.style.background = "#e53e3e";
         }
         renderTampilanGaleri();
@@ -436,119 +528,30 @@
         renderTampilanGaleri();
     }
 
-    function toggleCentangSemua(master) {
-        document.querySelectorAll('.select-checkbox').forEach(cb => cb.checked = master.checked);
+    function toggleCentangSemua(masterBox) {
+        document.querySelectorAll('.select-checkbox').forEach(cb => cb.checked = masterBox.checked);
     }
 
-    function dapatkanFileTerpilih() {
-        let arr = [];
-        document.querySelectorAll('.select-checkbox:checked').forEach(cb => arr.push(cb.value));
-        return arr;
-    }
-
-    async function prosesUnggahBerkas() {
-        let inputGaleri = document.getElementById('fileGaleriInput');
-        let inputKamera = document.getElementById('fileKameraInput');
-        let catatan = document.getElementById('catatanTeks').value;
-
-        let formData = new FormData();
-        formData.append('catatanTeks', catatan);
-
-        let adaFile = false;
-        for (let i = 0; i < inputGaleri.files.length; i++) { formData.append('fotoKeren', inputGaleri.files[i]); adaFile = true; }
-        for (let i = 0; i < inputKamera.files.length; i++) { formData.append('fotoKeren', inputKamera.files[i]); adaFile = true; }
-
-        if (!adaFile) { tampilkanNotifikasi("⚠️ Pilih file gambar terlebih dahulu!"); return; }
-
-        try {
-            let r = await fetch('/upload', { method: 'POST', body: formData });
-            if (r.ok) {
-                tampilkanNotifikasi("🎉 Foto berhasil diunggah!");
-                document.getElementById('catatanTeks').value = '';
-                inputGaleri.value = '';
-                inputKamera.value = '';
-                document.getElementById('statusFileTeks').style.display = 'none';
-                dapatkanKoleksiGaleri();
-            }
-        } catch(e) { console.error(e); }
-    }
-
-    async function prosesUnduhSingle(namaFile) {
-        try {
-            let r = await fetch(`/hitung-unduh/${namaFile}`, { method: 'POST' });
-            if(r.ok) {
-                let link = document.createElement('a');
-                link.href = '/uploads/' + namaFile;
-                link.download = namaFile;
-                link.click();
-                dapatkanKoleksiGaleri();
-            }
-        } catch(e) { console.error(e); }
-    }
-
-    // PAKAI DIALOG KUSTOM
-    function prosesHapusSingle(namaFile) {
-        bukaDialogKustom("Pindahkan foto ini ke tong sampah?", async () => {
-            try {
-                let r = await fetch('/tong-sampah/pindahkan', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ files: [namaFile] })
-                });
-                if(r.ok) { tampilkanNotifikasi("🗑️ Foto dipindahkan ke sampah"); dapatkanKoleksiGaleri(); }
-            } catch(e) { console.error(e); }
-        });
-    }
-
-    async function prosesPulihkanSingle(namaFile) {
-        try {
-            let r = await fetch('/tong-sampah/pulihkan', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ files: [namaFile] })
-            });
-            if(r.ok) { tampilkanNotifikasi("🔄 Foto berhasil dipulihkan"); dapatkanKoleksiGaleri(); }
-        } catch(e) { console.error(e); }
-    }
-
-    // PAKAI DIALOG KUSTOM
-    function prosesHapusPermanenSingle(namaFile) {
-        bukaDialogKustom("Hapus foto ini secara permanen? Tindakan ini tidak bisa dibatalkan!", async () => {
-            try {
-                let r = await fetch('/tong-sampah/permanen', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ files: [namaFile] })
-                });
-                if(r.ok) { tampilkanNotifikasi("💥 Foto dihapus permanen"); dapatkanKoleksiGaleri(); }
-            } catch(e) { console.error(e); }
-        }, '#000000');
-    }
-
-    // PAKAI DIALOG KUSTOM
     function eksekusiAksiMasal() {
-        let terpilih = dapatkanFileTerpilih();
-        if(terpilih.length === 0) { tampilkanNotifikasi("⚠️ Belum ada foto yang dipilih!"); return; }
+        let cbTerpilih = Array.from(document.querySelectorAll('.select-checkbox:checked')).map(cb => cb.value);
+        if (cbTerpilih.length === 0) { tampilkanNotifikasi("⚠️ Pilih minimal satu foto!"); return; }
 
-        let url = '/tong-sampah/pindahkan';
-        let pesan = `Pindahkan ${terpilih.length} foto ke tong sampah?`;
-        let warnaTombol = '#e53e3e';
+        let pesanPrompt = kategoriTabAktif === 'sampah' 
+            ? `Hapus permanen ${cbTerpilih.length} foto terpilih?` 
+            : `Pindahkan ${cbTerpilih.length} foto terpilih ke sampah?`;
 
-        if (kategoriTabAktif === 'sampah') {
-            pesan = `Hapus permanen ${terpilih.length} foto terpilih?`;
-            url = '/tong-sampah/permanen';
-            warnaTombol = '#000000';
-        }
+        let endpointUrl = kategoriTabAktif === 'sampah' ? '/hapus-masal-permanen' : '/hapus-masal';
+        let warnaTombol = kategoriTabAktif === 'sampah' ? '#000000' : '#e53e3e';
 
-        bukaDialogKustom(pesan, async () => {
+        bukaDialogKustom(pesanPrompt, async () => {
             try {
-                let r = await fetch(url, {
+                let r = await fetch(endpointUrl, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ files: terpilih })
+                    body: JSON.stringify({ files: cbTerpilih })
                 });
-                if(r.ok) {
-                    tampilkanNotifikasi("🌟 Aksi masal berhasil dilakukan");
+                if (r.ok) {
+                    tampilkanNotifikasi("🔥 Aksi masal sukses dieksekusi!");
                     matikanModeSeleksi();
                     dapatkanKoleksiGaleri();
                 }
@@ -556,6 +559,7 @@
         }, warnaTombol);
     }
 
+    // Pemanggilan awal saat halaman dimuat
     window.onload = dapatkanKoleksiGaleri;
 </script>
 </body>
