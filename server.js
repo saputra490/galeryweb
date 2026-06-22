@@ -69,7 +69,7 @@ const styleElegan = `
 `;
 
 function halamanNotifKustom(pesan, isError, tujuanRedirect) {
-    return `<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Pemberitahuan</title><style>body { background: #f8f9fa; display: flex; justify-content: center; align-items: center; min-height: 100vh; font-family: -apple-system, sans-serif; margin: 0; }.notif-box { background: ${isError ? '#fff5f5' : '#e53e3e'}; color: ${isError ? '#e53e3e' : '#2e7d32'}; padding: 20px 32px; border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); font-weight: 600; font-size: 16px; text-align: center; max-width: 90%; }</style></head><body><div class="notif-box">${pesan}</div><script>setTimeout(() => { window.location.href = "${tujuanRedirect}"; }, 1200);</script></body></html>`;
+    return `<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Pemberitahuan</title><style>body { background: #f8f9fa; display: flex; justify-content: center; align-items: center; min-height: 100vh; font-family: -apple-system, sans-serif; margin: 0; }.notif-box { background: ${isError ? '#fff5f5' : '#e8f5e9'}; color: ${isError ? '#e53e3e' : '#2e7d32'}; padding: 20px 32px; border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); font-weight: 600; font-size: 16px; text-align: center; max-width: 90%; }</style></head><body><div class="notif-box">${pesan}</div><script>setTimeout(() => { window.location.href = "${tujuanRedirect}"; }, 1200);</script></body></html>`;
 }
 
 app.get('/', (req, res) => {
@@ -108,6 +108,10 @@ app.post('/login', async (req, res) => {
     } catch {
         res.send(halamanNotifKustom("Terjadi kesalahan server!", true, "/login-page"));
     }
+});
+
+app.get('/logout', (req, res) => {
+    res.redirect('/login-page');
 });
 
 app.post('/upload', upload.array('foto'), async (req, res) => {
@@ -156,7 +160,6 @@ app.get('/daftar-foto', async (req, res) => {
     }
 });
 
-// Endpoint pendukung diubah menggunakan MongoDB
 app.post('/favorit/:namaFile', async (req, res) => {
     if (!koleksiFoto) return res.sendStatus(500);
     const foto = await koleksiFoto.findOne({ namaFile: req.params.namaFile });
