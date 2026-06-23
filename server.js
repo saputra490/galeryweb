@@ -13,16 +13,16 @@ app.use(express.urlencoded({ extended: true }));
 app.use(cors());
 app.use(cookieParser('kunci_rahasia_galeri')); 
 
-// ATURAN FILE STATIS: Menggunakan path.resolve agar aman di Vercel Serverless
+// ATURAN FILE STATIS
 app.use(express.static(path.resolve(__dirname, 'public')));
 
-// KONEKSI MONGODB SERVERLESS
-const uri = process.env.MONGODB_URI;
+// KONEKSI MONGODB (Bisa membaca MONGODB_URI atau URI_MONGODB agar anti-gagal)
+const uri = process.env.MONGODB_URI || process.env.URI_MONGODB;
 let client;
 let clientPromise;
 
 if (!uri) {
-  console.error("PENTING: Variabel MONGODB_URI belum diatur di Environment Variables Vercel!");
+  console.error("PENTING: Variabel database (MONGODB_URI / URI_MONGODB) tidak terdeteksi!");
 } else {
   client = new MongoClient(uri);
   clientPromise = client.connect();
@@ -62,7 +62,7 @@ async function pastikanLogin(req, res, next) {
   next();
 }
 
-// 1. RUTE UTAMA (Membuka halaman login.html dengan jalur absolut)
+// 1. RUTE UTAMA (Membuka login.html)
 app.get('/', (req, res) => {
   const usernameCookie = req.signedCookies.user_session;
   if (usernameCookie) {
@@ -71,7 +71,7 @@ app.get('/', (req, res) => {
   res.sendFile(path.resolve(__dirname, 'public', 'login.html'));
 });
 
-// 2. RUTE DASHBOARD UTAMA (Membuka halaman dashboard.html dengan jalur absolut)
+// 2. RUTE DASHBOARD UTAMA (Membuka dashboard.html)
 app.get('/dashboard', pastikanLogin, (req, res) => {
   res.sendFile(path.resolve(__dirname, 'public', 'dashboard.html')); 
 });
@@ -117,7 +117,7 @@ app.post('/login', async (req, res) => {
   }
 });
 
-// 5. RUTE AMBIL DATA FOTO DARI DATABASE
+// 5. RUTE AMBIL DATA FOTO
 app.get('/api/foto', pastikanLogin, async (req, res) => {
   try {
     const fotoDb = await dapatkanKoleksi('foto');
@@ -154,7 +154,6 @@ app.get('/logout', (req, res) => {
   res.redirect('/');
 });
 
-// MENJALANKAN SERVER LOCAL / CLOUD
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Server aktif di port ${PORT}`);
