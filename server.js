@@ -13,28 +13,28 @@ app.use(express.urlencoded({ extended: true }));
 app.use(cors());
 app.use(cookieParser('kunci_rahasia_galeri')); 
 
-// ATURAN FILE STATIS
+// Atur folder statis dengan path absolut
 app.use(express.static(path.resolve(__dirname, 'public')));
 
-// KONEKSI MONGODB (Bisa membaca MONGODB_URI atau URI_MONGODB agar anti-gagal)
+// KONEKSI MONGODB MODEL SERVERLESS (Global Cached Connection)
 const uri = process.env.MONGODB_URI || process.env.URI_MONGODB;
-let client;
-let clientPromise;
+let cachedClient = null;
+let cachedDb = null;
 
-if (!uri) {
-  console.error("PENTING: Variabel database (MONGODB_URI / URI_MONGODB) tidak terdeteksi!");
-} else {
-  client = new MongoClient(uri);
-  clientPromise = client.connect();
-}
-
-async function dapatkanKoleksi(namaKoleksi) {
-  if (!clientPromise) {
-    throw new Error("Koneksi database belum diinisialisasi.");
+async function hubungkanKeDatabase() {
+  if (cachedClient && cachedDb) {
+    return { client: cachedClient, db: cachedDb };
   }
-  const koneksiDb = await clientPromise;
-  const db = koneksiDb.db('galeri_db');
-  return db.collection(namaKoleksi);
+  if (!uri) {
+    throw new Error("Variabel database (MONGODB_URI / URI_MONGODB) tidak terdefinisi!");
+  }
+  const client = new MongoClient(uri);
+  await client.connect();
+  const db = client.db('galeri_db');
+  
+  cachedClient = client;
+  cachedDb = db;
+  return { client, db };
 }
 
 // KONFIGURASI CLOUDINARY
@@ -54,7 +54,7 @@ const storage = new CloudinaryStorage({
 const upload = multer({ storage: storage });
 
 // MIDDLEWARE PENGAMAN AKSES
-async function pastikanLogin(req, res, next) {
+function pastikanLogin(req, res, next) {
   const usernameCookie = req.signedCookies.user_session;
   if (!usernameCookie) {
     return res.redirect('/');
@@ -62,7 +62,7 @@ async function pastikanLogin(req, res, next) {
   next();
 }
 
-// 1. RUTE UTAMA (Membuka login.html)
+// 1. RUTE UTAMA
 app.get('/', (req, res) => {
   const usernameCookie = req.signedCookies.user_session;
   if (usernameCookie) {
@@ -71,7 +71,7 @@ app.get('/', (req, res) => {
   res.sendFile(path.resolve(__dirname, 'public', 'login.html'));
 });
 
-// 2. RUTE DASHBOARD UTAMA (Membuka dashboard.html)
+// 2. RUTE DASHBOARD UTAMA
 app.get('/dashboard', pastikanLogin, (req, res) => {
   res.sendFile(path.resolve(__dirname, 'public', 'dashboard.html')); 
 });
@@ -80,21 +80,19 @@ app.get('/dashboard', pastikanLogin, (req, res) => {
 app.post('/register', async (req, res) => {
   try {
     const { username, password } = req.body;
-    if (!username || !password) {
-      return res.send("Username dan password wajib diisi!");
-    }
+    if (!username || !password) return res.send("Username dan password wajib diisi!");
 
-    const penggunaDb = await dapatkanKoleksi('pengguna');
+    const { db } = await hubungkanKeDatabase();
+    const penggunaDb = db.collection('pengguna');
+    
     const userExist = await penggunaDb.findOne({ username });
-    if (userExist) {
-      return res.send("Username sudah digunakan, cari nama lain!");
-    }
+    if (userExist) return res.send("Username sudah digunakan!");
 
     await penggunaDb.insertOne({ username, password });
-    res.send("<script>alert('Akun berhasil dibuat! Silakan login.'); window.location='/';</script>");
+    res.send("<script>alert('Akun berhasil dibuat!'); window.location='/';</script>");
   } catch (err) {
     console.error(err);
-    res.status(500).send("Gagal mendaftarkan akun ke database cloud.");
+    res.status(500).send("Gagal mendaftarkan akun.");
   }
 });
 
@@ -102,9 +100,10 @@ app.post('/register', async (req, res) => {
 app.post('/login', async (req, res) => {
   try {
     const { username, password } = req.body;
-    const penggunaDb = await dapatkanKoleksi('pengguna');
+    const { db } = await hubungkanKeDatabase();
+    const penggunaDb = db.collection('pengguna');
+    
     const user = await penggunaDb.findOne({ username, password });
-
     if (user) {
       res.cookie('user_session', username, { signed: true, maxAge: 24 * 60 * 60 * 1000, httpOnly: true });
       res.redirect('/dashboard');
@@ -113,14 +112,15 @@ app.post('/login', async (req, res) => {
     }
   } catch (err) {
     console.error(err);
-    res.status(500).send("Terjadi kesalahan sistem saat proses login.");
+    res.status(500).send("Terjadi kesalahan sistem.");
   }
 });
 
 // 5. RUTE AMBIL DATA FOTO
 app.get('/api/foto', pastikanLogin, async (req, res) => {
   try {
-    const fotoDb = await dapatkanKoleksi('foto');
+    const { db } = await hubungkanKeDatabase();
+    const fotoDb = db.collection('foto');
     const daftarFoto = await fotoDb.find({}).toArray();
     res.json(daftarFoto);
   } catch (err) {
@@ -133,7 +133,8 @@ app.post('/api/upload', pastikanLogin, upload.single('foto'), async (req, res) =
   try {
     if (!req.file) return res.status(400).send("Foto gagal diunggah");
 
-    const fotoDb = await dapatkanKoleksi('foto');
+    const { db } = await hubungkanKeDatabase();
+    const fotoDb = db.collection('foto');
     await fotoDb.insertOne({
       url: req.file.path,
       public_id: req.file.filename,
@@ -144,7 +145,7 @@ app.post('/api/upload', pastikanLogin, upload.single('foto'), async (req, res) =
     res.redirect('/dashboard');
   } catch (err) {
     console.error(err);
-    res.status(500).send("Gagal menyimpan data foto ke database cloud.");
+    res.status(500).send("Gagal menyimpan data foto.");
   }
 });
 
