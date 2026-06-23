@@ -3,564 +3,630 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Galeri Saya</title>
+    <title>Dashboard Publik Galeri</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
-        body { background-color: #ffffff; color: #1a1a1a; margin: 0; padding: 0; user-select: none; -webkit-user-select: none; }
-        .container { max-width: 600px; margin: 0 auto; padding: 16px; }
+        /* --- UTAMA & CONTAINER --- */
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: #f5f5f7;
+            margin: 0;
+            padding: 0;
+            color: #333;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: #ffffff;
+            min-height: 100vh;
+            box-sizing: border-box;
+            padding-bottom: 60px;
+        }
 
-        .header-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
-        .header-top h2 { font-size: 22px; font-weight: 700; margin: 0; }
-        .logout-link { color: #e53e3e; font-size: 14px; text-decoration: none; font-weight: 500; }
-
-        /* Panel Unggah */
-        .upload-panel { background: #000000; border-radius: 28px; padding: 24px 20px; margin-bottom: 20px; color: #fff; }
-        .btn-upload-option { width: 100%; background: #222224; border: none; color: #fff; padding: 14px; border-radius: 14px; font-size: 15px; font-weight: 600; text-align: center; margin-bottom: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; }
-        .file-status-indicator { text-align: center; color: #34c759; font-size: 13px; font-weight: 500; margin: -4px 0 10px 0; display: none; }
-        .caption-field { width: 100%; padding: 16px; border: none; background: #222224; color: #fff; border-radius: 14px; font-size: 14px; margin-bottom: 16px; outline: none; }
-        .caption-field::placeholder { color: #757575; }
-        .btn-submit-upload { width: 100%; background: #ffffff; color: #000000; border: none; padding: 16px; border-radius: 30px; font-size: 15px; font-weight: 700; cursor: pointer; text-align: center; }
-
-        /* Navigasi Kategori Kapsul */
-        .navigation-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; gap: 10px; }
-        .navigation-tabs { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; }
-        .navigation-tabs::-webkit-scrollbar { display: none; }
-        .nav-pill { padding: 10px 16px; border-radius: 20px; font-size: 14px; font-weight: 600; border: none; background: #f1f3f5; color: #4a5568; cursor: pointer; white-space: nowrap; }
-        .nav-pill.active-semua { background: #e8f5e9; color: #2e7d32; }
-        .nav-pill.active-favorit { background: #f1f3f5; color: #4a5568; }
-        .nav-pill.active-favorit.active-style { background: #ffe3e3; color: #c53030; }
-        .nav-pill.active-sampah { background: #f1f3f5; color: #4a5568; }
-        .nav-pill.active-sampah.active-style { background: #e2e8f0; color: #4a5568; }
-        .btn-trigger-select { background: #1c1c1e; color: #fff; border: none; padding: 10px 20px; border-radius: 20px; font-size: 14px; font-weight: 600; cursor: pointer; }
-
-        /* Widget Kalender Navigasi */
-        .date-navigator-container { display: flex; align-items: center; justify-content: space-between; background: #f4f6f9; border-radius: 14px; padding: 8px; margin-bottom: 24px; }
-        .btn-date-arrow { width: 36px; height: 36px; border-radius: 8px; border: none; background: #e2e8f0; color: #1a1a1a; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; }
-        .datepicker-wrapper { position: relative; display: flex; align-items: center; justify-content: center; flex-grow: 1; cursor: pointer; height: 36px; }
-        .current-date-text { font-size: 15px; font-weight: 700; color: #1a1a1a; display: flex; align-items: center; gap: 6px; }
-        .hidden-date-input { position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
-
-        /* Bar Kontrol Pilihan Masal */
-        .selection-management-bar { display: none; align-items: center; justify-content: space-between; background: #f8f9fa; border: 1px solid #e2e8f0; padding: 14px 16px; border-radius: 16px; margin-bottom: 20px; }
-        .check-all-box { display: flex; align-items: center; font-size: 14px; font-weight: 600; color: #4a5568; cursor: pointer; gap: 8px; }
-        .action-flex-buttons { display: flex; gap: 8px; }
-        .btn-action-control { padding: 10px 16px; border-radius: 20px; font-size: 13px; font-weight: 600; border: none; cursor: pointer; }
-        .btn-ctl-batal { background: #e2e8f0; color: #2d3748; }
-        .btn-ctl-hapus { background: #e53e3e; color: #fff; }
-
-        /* Grid & Card Foto */
-        .gallery-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
-        .card-foto { background: #ffffff; border: 1px solid #eaeaea; border-radius: 24px; padding: 12px; display: flex; flex-direction: column; justify-content: space-between; position: relative; box-shadow: 0 2px 8px rgba(0,0,0,0.02); min-height: 400px; -webkit-touch-callout: none; }
-        .select-checkbox { position: absolute; top: 20px; left: 20px; width: 22px; height: 22px; z-index: 10; cursor: pointer; display: none; }
+        /* --- KOTAK UPLOAD --- */
+        .header-upload {
+            background-color: #0d0d0d;
+            padding: 20px;
+            text-align: center;
+        }
+        .btn-pilih-file {
+            width: 100%;
+            padding: 14px;
+            background-color: #1a1a1a;
+            color: #ffffff;
+            border: 1px solid #333;
+            border-radius: 8px;
+            font-size: 15px;
+            font-weight: 500;
+            margin-bottom: 10px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+        .teks-status-file {
+            color: #888;
+            font-size: 13px;
+            margin-bottom: 12px;
+            font-style: italic;
+        }
+        .input-caption {
+            width: 100%;
+            padding: 12px;
+            background: #1a1a1a;
+            border: 1px solid #333;
+            border-radius: 8px;
+            color: #fff;
+            margin-bottom: 12px;
+            box-sizing: border-box;
+            font-size: 14px;
+        }
+        .btn-upload-utama {
+            width: 100%;
+            padding: 14px;
+            background-color: #ffffff;
+            color: #000000;
+            border: none;
+            border-radius: 8px;
+            font-weight: bold;
+            font-size: 15px;
+            cursor: pointer;
+        }
         
-        .img-container { width: 100%; aspect-ratio: 1 / 1; border-radius: 18px; overflow: hidden; background: #f7fafc; margin-bottom: 12px; cursor: pointer; position: relative; }
-        .img-container img { width: 100%; height: 100%; object-fit: cover; pointer-events: none; }
+        /* --- TABS NAVIGATION --- */
+        .nav-tabs {
+            display: flex;
+            gap: 8px;
+            padding: 15px;
+            background: #fff;
+            align-items: center;
+        }
+        .tab-kapsul {
+            padding: 8px 16px;
+            border-radius: 20px;
+            background: #f2f2f7;
+            color: #000;
+            font-size: 14px;
+            font-weight: 500;
+            border: none;
+            cursor: pointer;
+        }
+        .tab-kapsul.aktif {
+            background: #e2fcd4 !important;
+            color: #246626 !important;
+        }
+
+        /* --- SELEKSI MASAL PANEL --- */
+        .panel-seleksi {
+            display: none;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 15px;
+            background: #f2f2f7;
+            border-bottom: 1px solid #d1d1d6;
+        }
+        .grup-aksi {
+            display: flex;
+            gap: 8px;
+        }
+        .btn-aksi-pilih {
+            padding: 6px 14px;
+            border-radius: 20px;
+            border: none;
+            font-size: 13px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        .btn-danger-masal { background: #ff3b30; color: #fff; }
+        .btn-safe-masal { background: #34c759; color: #fff; }
+        .btn-batal-masal { background: #e5e5ea; color: #000; }
+
+        /* --- NAVIGASI TANGGAL --- */
+        .area-nav-tanggal {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 15px;
+            background: #fff;
+        }
+        .btn-panah {
+            background: #e5e5ea;
+            border: none;
+            border-radius: 6px;
+            padding: 8px 12px;
+            cursor: pointer;
+        }
+        .teks-tanggal {
+            font-weight: bold;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            cursor: pointer;
+            padding: 6px 12px;
+            border-radius: 6px;
+            background: #f2f2f7;
+        }
+        #pilihKalender {
+            opacity: 0;
+            position: absolute;
+            z-index: -1;
+            width: 1px;
+            height: 1px;
+        }
+
+        /* --- FOTO GRID --- */
+        .grid-foto {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+            padding: 15px;
+        }
+        .foto-box {
+            background: #fff;
+            border-radius: 12px;
+            border: 1px solid #e5e5ea;
+            overflow: hidden;
+            padding: 10px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            position: relative;
+        }
+        .foto-wrapper-kotak {
+            position: relative;
+            width: 100%;
+            padding-top: 100%;
+            background: #f2f2f7;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        .foto-wrapper-kotak img {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            object-fit: cover;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+        .kotak-pilih-foto {
+            position: absolute;
+            top: 8px; left: 8px;
+            width: 22px; height: 22px;
+            z-index: 10;
+            cursor: pointer;
+            display: none;
+        }
+        .badge-hati-melayang {
+            position: absolute;
+            top: 8px; right: 8px;
+            background: rgba(255,255,255,0.9);
+            border-radius: 50%;
+            padding: 4px;
+            font-size: 12px;
+            z-index: 5;
+        }
+
+        /* --- TOMBOL-TOMBOL BAWAH --- */
+        .info-teks-foto { font-weight: bold; font-size: 14px; margin-top: 8px; color: #1c1c1e; }
+        .meta-info-foto { font-size: 11px; color: #8e8e93; margin-top: 4px; }
+        .area-tombol { display: flex; gap: 6px; margin-top: 10px; }
+        .btn-download {
+            flex: 1; text-align: center; background: #f2f2f7; color: #007aff;
+            padding: 8px; border-radius: 6px; text-decoration: none;
+            font-size: 13px; font-weight: 500;
+        }
+        .btn-favorit-bawah {
+            background: #f2f2f7; border: none; border-radius: 6px;
+            padding: 0 12px; cursor: pointer; display: flex; align-items: center;
+        }
+        .btn-action-danger {
+            width: 100%; background: #fff1f0; color: #ff3b30; border: none;
+            border-radius: 6px; padding: 8px; margin-top: 6px;
+            font-weight: bold; cursor: pointer; font-size: 13px;
+        }
+
+        /* REUSABLE STYLES */
+        .lightbox {
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.9); z-index: 1000; justify-content: center; align-items: center;
+        }
+        .lightbox img { max-width: 90%; max-height: 80%; border-radius: 8px; }
         
-        .catatan-text { font-size: 16px; font-weight: 700; color: #1a1a1a; margin-bottom: 6px; display: block; word-break: break-word; padding-left: 4px; }
-        .meta-info { font-size: 12px; color: #8a8a8f; margin-bottom: 6px; display: flex; align-items: center; gap: 4px; padding-left: 4px; }
-        .stats-info { font-size: 12px; color: #8a8a8f; margin-bottom: 16px; display: flex; gap: 12px; padding-left: 4px; }
-
-        /* Tombol Aksi */
-        .card-buttons { display: flex; flex-direction: column; width: 100%; gap: 8px; }
-        .row-action-upper { display: flex; gap: 8px; width: 100%; }
-        .btn-card { width: 100%; padding: 12px; border-radius: 12px; font-size: 14px; font-weight: 700; border: none; cursor: pointer; text-align: center; transition: opacity 0.2s; }
-        .btn-card:active { opacity: 0.8; }
-        
-        .btn-unduh { background: #f1f3f5; color: #1a1a1a; }
-        .btn-favorit { background: #fff1f1; color: #c53030; }
-        .btn-favorit.is-fav { background: #e53e3e; color: #fff; }
-        .btn-hapus-utama { background: #fff1f1; color: #e53e3e; width: 100%; }
-        .btn-pulih-utama { background: #e8f5e9; color: #2e7d32; width: 100%; }
-
-        /* Toast Popup Atas */
-        .custom-toast { position: fixed; top: -100px; left: 50%; transform: translateX(-50%); background: #1a1a1a; color: #ffffff; padding: 12px 24px; border-radius: 30px; font-size: 14px; font-weight: 600; box-shadow: 0 4px 15px rgba(0,0,0,0.2); transition: top 0.4s ease; z-index: 10001; }
-        .custom-toast.show { top: 25px; }
-
-        /* Overlay Pop-up Gambar Besar (Lightbox) */
-        .lightbox-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.9); z-index: 10000; justify-content: center; align-items: center; padding: 20px; }
-        .lightbox-content { max-width: 100%; max-height: 85vh; border-radius: 12px; object-fit: contain; box-shadow: 0 4px 30px rgba(0,0,0,0.5); }
-        .lightbox-close { position: absolute; top: 24px; right: 24px; background: rgba(255, 255, 255, 0.2); color: #fff; border: none; width: 44px; height: 44px; border-radius: 50%; font-size: 18px; cursor: pointer; display: flex; justify-content: center; align-items: center; font-weight: bold; z-index: 10002; }
-
-        /* MODAL DIALOG NOTIFIKASI KUSTOM APLIKASI */
-        .custom-modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.5); z-index: 20000; justify-content: center; align-items: center; padding: 20px; }
-        .custom-modal-box { background: #ffffff; border-radius: 24px; padding: 24px; width: 100%; max-width: 340px; text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.15); animation: popupMasuk 0.2s ease-out; }
-        .custom-modal-title { font-size: 16px; font-weight: 700; color: #1a1a1a; margin-bottom: 20px; line-height: 1.4; }
-        .custom-modal-buttons { display: flex; gap: 12px; justify-content: center; }
-        .btn-modal { flex: 1; padding: 12px; border-radius: 14px; font-size: 14px; font-weight: 700; border: none; cursor: pointer; }
-        .btn-modal-batal { background: #e2e8f0; color: #4a5568; }
-        .btn-modal-oke { background: #e53e3e; color: #ffffff; }
-
-        @keyframes popupMasuk {
-            from { transform: scale(0.9); opacity: 0; }
-            to { transform: scale(1); opacity: 1; }
+        .toast-notif {
+            position: fixed; left: 50%; transform: translateX(-50%); top: -100px;
+            background: #323232; color: #fff; padding: 12px 24px; border-radius: 25px;
+            z-index: 2000; font-size: 14px; transition: top 0.3s ease;
         }
     </style>
 </head>
 <body>
 
-<div id="toastNotifikasi" class="custom-toast">Notifikasi</div>
-
-<div id="customConfirmModal" class="custom-modal-overlay">
-    <div class="custom-modal-box">
-        <div id="customModalText" class="custom-modal-title">Apakah anda yakin?</div>
-        <div class="custom-modal-buttons">
-            <button class="btn-modal btn-modal-batal" onclick="tutupDialogKustom(false)">Batal</button>
-            <button id="btnModalConfirmOk" class="btn-modal btn-modal-oke" onclick="tutupDialogKustom(true)">Oke</button>
-        </div>
-    </div>
-</div>
-
-<div id="lightboxContainer" class="lightbox-overlay" onclick="tutupGambarBesar()">
-    <button class="lightbox-close" onclick="event.stopPropagation(); tutupGambarBesar()">❌</button>
-    <img id="lightboxTargetImage" class="lightbox-content" src="" alt="Preview" onclick="event.stopPropagation()">
-</div>
-
 <div class="container">
-    <div class="header-top">
-        <h2>📷 Galeri Foto</h2>
-        <a href="/logout" class="logout-link">Keluar</a>
+    <div class="header-upload">
+        <form>
+            <input type="file" id="inputKamera" name="photo" accept="image/*" capture="environment" style="display:none;">
+            <input type="file" id="inputGaleri" name="photo" accept="image/*" style="display:none;">
+            
+            <button type="button" class="btn-pilih-file" onclick="document.getElementById('inputKamera').click()">📸 Ambil Foto Pake Kamera</button>
+            <button type="button" class="btn-pilih-file" onclick="document.getElementById('inputGaleri').click()">📁 Pilih File dari Galeri HP</button>
+            
+            <div id="infoStatus" class="teks-status-file">Belum ada file terpilih</div>
+            
+            <input type="text" name="caption" class="input-caption" placeholder="Tulis catatan/caption foto di sini (opsional)...">
+            <button type="submit" class="btn-upload-utama">Unggah Foto Sekarang</button>
+        </form>
     </div>
 
-    <div class="upload-panel">
-        <input type="file" id="fileGaleriInput" multiple accept="image/*" style="display: none;" onchange="pilihanFileBerubah()">
-        <input type="file" id="fileKameraInput" accept="image/*" capture="environment" style="display: none;" onchange="pilihanFileBerubah()">
-
-        <button type="button" class="btn-upload-option" onclick="document.getElementById('fileKameraInput').click()">📸 Ambil Foto Pake Kamera</button>
-        <button type="button" class="btn-upload-option" onclick="document.getElementById('fileGaleriInput').click()">📁 Pilih File dari Galeri HP</button>
-
-        <div class="file-status-indicator" id="statusFileTeks"></div>
-
-        <input type="text" id="catatanTeks" class="caption-field" placeholder="Tulis catatan/caption foto di sini (opsional)...">
-        <button type="button" class="btn-submit-upload" onclick="prosesUnggahBerkas()">Unggah Foto Sekarang</button>
+    <div class="nav-tabs">
+        <button id="tabSemua" class="tab-kapsul aktif" onclick="gantiFilterView('semua')">Semua Foto</button>
+        <button id="tabFavorit" class="tab-kapsul" onclick="gantiFilterView('favorit')">Favorit ❤️</button>
+        <button id="tabTrash" class="tab-kapsul" onclick="gantiFilterView('trash')">Telah Dihapus 🗑️</button>
+        <button class="tab-kapsul" onclick="triggerModeSeleksiMasal()" style="background:#e5e5ea; margin-left:auto;">Pilih ✓</button>
     </div>
 
-    <div class="navigation-row">
-        <div class="navigation-tabs">
-            <button class="nav-pill active-semua" id="tabSemua" onclick="pindahTabKategori('semua')">Semua Foto</button>
-            <button class="nav-pill" id="tabFavorit" onclick="pindahTabKategori('favorit')">Favorit ❤️</button>
-            <button class="nav-pill" id="tabSampah" onclick="pindahTabKategori('sampah')">Telah Dihapus 🗑️</button>
-        </div>
-        <button type="button" class="btn-trigger-select" onclick="nyalakanModeSeleksi()">Pilih</button>
-    </div>
-
-    <div class="date-navigator-container" id="areaKalenderNavigasi">
-        <button class="btn-date-arrow" onclick="geserTanggal(-1)">◀</button>
-        <div class="datepicker-wrapper">
-            <div class="current-date-text">
-                📅 <span id="labelTanggalAktif">Memuat tanggal...</span>
-            </div>
-            <input type="date" id="inputKalenderSistem" class="hidden-date-input" onchange="tanggalKalenderDipilih(this)">
-        </div>
-        <button class="btn-date-arrow" onclick="geserTanggal(1)">▶</button>
-    </div>
-
-    <div class="selection-management-bar" id="barManajemenSeleksi">
-        <label class="check-all-box">
-            <input type="checkbox" id="checkAllMaster" onchange="toggleCentangSemua(this)"> Pilih Semua
+    <div class="panel-seleksi" id="panelSeleksiMasal">
+        <label style="font-size:13px; font-weight:bold; display:flex; align-items:center; gap:5px;">
+            <input type="checkbox" id="checkPilihSemua" onclick="togglePilihSemua(this)"> Pilih Semua
         </label>
-        <div class="action-flex-buttons">
-            <button class="btn-action-control btn-ctl-batal" onclick="matikanModeSeleksi()">Batal</button>
-            <button class="btn-action-control btn-ctl-hapus" id="btnAksiMasal" onclick="eksekusiAksiMasal()">Hapus</button>
+        <div class="grup-aksi" id="grupTombolAksiNormal">
+            <button class="btn-aksi-pilih btn-batal-masal" onclick="batalkanModeSeleksi()">Batalkan</button>
+            <button class="btn-aksi-pilih btn-danger-masal" onclick="prosesHapusMasal()">Hapus</button>
+        </div>
+        <div class="grup-aksi" id="grupTombolAksiTrash" style="display:none;">
+            <button class="btn-aksi-pilih btn-batal-masal" onclick="batalkanModeSeleksi()">Batalkan</button>
+            <button class="btn-aksi-pilih btn-safe-masal" onclick="prosesPulihkanMasal()">Pulihkan</button>
+            <button class="btn-aksi-pilih btn-danger-masal" onclick="prosesHapusPermanenMasal()">Hapus Permanen</button>
         </div>
     </div>
 
-    <div class="gallery-grid" id="mainGalleryGrid"></div>
+    <div class="area-nav-tanggal" id="navArea">
+        <button class="btn-panah" id="btnPrev" onclick="navigasi(-1)">◀</button>
+        <div class="teks-tanggal" onclick="bukaInputKalender()">
+            📅 <span id="tglAktif">Minggu, 21 Juni 2026</span>
+            <input type="date" id="pilihKalender">
+        </div>
+        <button class="btn-panah" id="btnNext" onclick="navigasi(1)">▶</button>
+    </div>
+
+    <div id="galeriWeb"></div>
 </div>
+
+<div class="lightbox" id="boxLightbox" onclick="tutupFoto()"><img id="fotoBesar" src="" alt="Foto"></div>
+<div id="toast" class="toast-notif">Notifikasi</div>
 
 <script>
-    let semuaDataFoto = [];
-    let kategoriTabAktif = 'semua';
-    let modeSeleksiMenyala = false;
-    let objekTanggalAktif = new Date();
-    let fungsiCallbackModal = null;
+    let indexTgl = 0; 
+    let dataGrup = {};
+    let daftarTgl = [];
+    let filterAktif = 'semua'; 
+    let listItemTerpilih = []; 
+    let modeSeleksiTerbuka = false; 
 
-    // FIX: FUNGSI MODAL DIALOG KUSTOM
-    function bukaDialogKustom(pesan, callback, warnaTombolOk = '#e53e3e') {
-        document.getElementById('customModalText').innerText = pesan;
-        let btnOk = document.getElementById('btnModalConfirmOk');
-        btnOk.style.background = warnaTombolOk;
-        fungsiCallbackModal = callback;
-        document.getElementById('customConfirmModal').style.display = 'flex';
-    }
+    const token = localStorage.getItem('token');
+    if (!token) window.location.href = 'login.html';
 
-    function tutupDialogKustom(apakahOke) {
-        document.getElementById('customConfirmModal').style.display = 'none';
-        if (apakahOke && typeof fungsiCallbackModal === 'function') {
-            fungsiCallbackModal();
-        }
-        fungsiCallbackModal = null;
-    }
-
-    function tampilkanNotifikasi(pesan) {
-        let toast = document.getElementById('toastNotifikasi');
+    function tampilToast(pesan) {
+        const toast = document.getElementById('toast');
         toast.innerText = pesan;
-        toast.classList.add('show');
-        setTimeout(() => { toast.classList.remove('show'); }, 3000);
+        toast.style.top = '24px';
+        setTimeout(() => { toast.style.top = '-100px'; }, 2200);
     }
 
-    async function dapatkanKoleksiGaleri() {
-        try {
-            let r = await fetch('/daftar-foto');
-            if (r.status === 401) { window.location.href = '/login-page'; return; }
-            semuaDataFoto = await r.json();
-            syncInputTanggalSistem();
-            perbaruiLabelKalender();
-            renderTampilanGaleri();
-        } catch(e) { console.error(e); }
-    }
-
-    function dapatkanTeksFormatTanggal(objekDate) {
-        return objekDate.toLocaleDateString('id-ID', {
-            weekday: 'long',
-            day: 'numeric',
-            month: 'long',
-            year: 'numeric'
-        });
-    }
-
-    function syncInputTanggalSistem() {
-        const yyyy = objekTanggalAktif.getFullYear();
-        const mm = String(objekTanggalAktif.getMonth() + 1).padStart(2, '0');
-        const dd = String(objekTanggalAktif.getDate()).padStart(2, '0');
-        document.getElementById('inputKalenderSistem').value = `${yyyy}-${mm}-${dd}`;
-    }
-
-    function perbaruiLabelKalender() {
-        document.getElementById('labelTanggalAktif').innerText = dapatkanTeksFormatTanggal(objekTanggalAktif);
-    }
-
-    function geserTanggal(arah) {
-        objekTanggalAktif.setDate(objekTanggalAktif.getDate() + arah);
-        syncInputTanggalSistem();
-        perbaruiLabelKalender();
-        renderTampilanGaleri();
-    }
-
-    function tanggalKalenderDipilih(input) {
-        if (!input.value) return;
-        objekTanggalAktif = new Date(input.value);
-        perbaruiLabelKalender();
-        renderTampilanGaleri();
-    }
-
-    function pilihanFileBerubah() {
-        let inputGaleri = document.getElementById('fileGaleriInput');
-        let inputKamera = document.getElementById('fileKameraInput');
-        let info = document.getElementById('statusFileTeks');
-        let total = inputGaleri.files.length + inputKamera.files.length;
-        if(total > 0) {
-            info.innerText = `✅ ${total} Foto berhasil dipilih`;
-            info.style.display = 'block';
-        } else { info.style.display = 'none'; }
-    }
-
-    function pindahTabKategori(target) {
-        kategoriTabAktif = target;
-        document.querySelectorAll('.nav-pill').forEach(btn => btn.classList.remove('active-semua', 'active-style'));
+    document.addEventListener("DOMContentLoaded", function() {
+        const infoStatus = document.getElementById('infoStatus');
+        const inputKamera = document.getElementById('inputKamera');
+        const inputGaleri = document.getElementById('inputGaleri');
         
-        let elKalender = document.getElementById('areaKalenderNavigasi');
-        if (target === 'semua') {
-            document.getElementById('tabSemua').classList.add('active-semua');
-            elKalender.style.display = 'flex';
-        } else if (target === 'favorit') {
-            document.getElementById('tabFavorit').classList.add('active-style');
-            elKalender.style.display = 'none';
-        } else if (target === 'sampah') {
-            document.getElementById('tabSampah').classList.add('active-style');
-            elKalender.style.display = 'none';
-        }
-        
-        matikanModeSeleksi();
-        renderTampilanGaleri();
-    }
-
-    async function bukaGambarBesar(namaFile) {
-        const lb = document.getElementById('lightboxContainer');
-        const lbImg = document.getElementById('lightboxTargetImage');
-        lbImg.src = '/uploads/' + namaFile;
-        lb.style.display = 'flex';
-
-        try {
-            let r = await fetch('/hitung-lihat/' + namaFile, { method: 'POST' });
-            if (r.ok) { 
-                let updateData = await fetch('/daftar-foto');
-                if(updateData.ok) semuaDataFoto = await updateData.json();
+        function updateStatus(input, inputLain) {
+            if (inputLain) inputLain.value = ""; 
+            if (input && input.files.length > 0) {
+                infoStatus.innerText = `✅ ${input.files.length} file berhasil dipilih`;
+                infoStatus.style.color = "#34c759";
+                tampilToast("Gambar siap diunggah!");
             }
-        } catch (e) { console.error(e); }
-    }
-
-    function tutupGambarBesar() {
-        document.getElementById('lightboxContainer').style.display = 'none';
-        renderTampilanGaleri();
-    }
-
-    // FIX: FUNGSI AKSI SATUAN FOTO (HAPUS, FAVORIT, PULIHKAN, PERMANEN)
-    async function toggleAksiFavorit(namaFile) {
-        try {
-            let r = await fetch('/favorit/' + namaFile, { method: 'POST' });
-            if (r.ok) {
-                tampilkanNotifikasi("❤️ Status favorit diperbarui!");
-                dapatkanKoleksiGaleri();
-            }
-        } catch(e) { console.error(e); }
-    }
-
-    function aksiHapusKeSampah(namaFile) {
-        bukaDialogKustom("Pindahkan foto ini ke tong sampah?", async () => {
-            try {
-                let r = await fetch('/hapus/' + namaFile, { method: 'POST' });
-                if (r.ok) {
-                    tampilkanNotifikasi("🗑️ Foto dipindah ke sampah!");
-                    dapatkanKoleksiGaleri();
-                }
-            } catch(e) { console.error(e); }
-        }, '#e53e3e');
-    }
-
-    function aksiPulihkanFoto(namaFile) {
-        bukaDialogKustom("Pulihkan foto ini kembali ke galeri utama?", async () => {
-            try {
-                let r = await fetch('/pulihkan/' + namaFile, { method: 'POST' });
-                if (r.ok) {
-                    tampilkanNotifikasi("✅ Foto berhasil dipulihkan!");
-                    dapatkanKoleksiGaleri();
-                }
-            } catch(e) { console.error(e); }
-        }, '#2e7d32');
-    }
-
-    function aksiHapusPermanen(namaFile) {
-        bukaDialogKustom("Hapus foto ini secara permanen? Tindakan ini tidak bisa dibatalkan!", async () => {
-            try {
-                let r = await fetch('/hapus-permanen/' + namaFile, { method: 'POST' });
-                if (r.ok) {
-                    tampilkanNotifikasi("💥 Foto dihapus permanen!");
-                    dapatkanKoleksiGaleri();
-                }
-            } catch(e) { console.error(e); }
-        }, '#000000');
-    }
-
-    async function prosesUnggahBerkas() {
-        let inputGaleri = document.getElementById('fileGaleriInput');
-        let inputKamera = document.getElementById('fileKameraInput');
-        let catatan = document.getElementById('catatanTeks').value;
-
-        let formData = new FormData();
-        for (let i = 0; i < inputGaleri.files.length; i++) { formData.append('foto', inputGaleri.files[i]); }
-        for (let i = 0; i < inputKamera.files.length; i++) { formData.append('foto', inputKamera.files[i]); }
-        formData.append('catatan', catatan);
-
-        if (inputGaleri.files.length === 0 && inputKamera.files.length === 0) {
-            tampilkanNotifikasi("⚠️ Pilih atau ambil foto terlebih dahulu!");
-            return;
         }
+        if (inputKamera) inputKamera.addEventListener('change', () => updateStatus(inputKamera, inputGaleri));
+        if (inputGaleri) inputGaleri.addEventListener('change', () => updateStatus(inputGaleri, inputKamera));
 
-        tampilkanNotifikasi("⏳ Sedang mengunggah...");
-        try {
-            let r = await fetch('/upload', { method: 'POST', body: formData });
-            if (r.ok) {
-                tampilkanNotifikasi("🚀 Berhasil mengunggah foto!");
-                document.getElementById('catatanTeks').value = '';
-                document.getElementById('fileGaleriInput').value = '';
-                document.getElementById('fileKameraInput').value = '';
-                document.getElementById('statusFileTeks').style.display = 'none';
-                dapatkanKoleksiGaleri();
+        // Pengirim Upload Form
+        document.querySelector('form').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const fileInput = inputKamera.files.length > 0 ? inputKamera : inputGaleri;
+            if (fileInput.files.length === 0) return tampilToast("Silakan pilih foto terlebih dahulu!");
+
+            const formData = new FormData();
+            formData.append('photo', fileInput.files[0]);
+            formData.append('title', document.querySelector('.input-caption').value);
+
+            tampilToast("Sedang mengunggah ke Cloudinary...");
+
+            const res = await fetch('/api/photos/upload', {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${token}` },
+                body: formData
+            });
+
+            if (res.ok) {
+                tampilToast("Foto berhasil diunggah!");
+                document.querySelector('.input-caption').value = "";
+                infoStatus.innerText = "Belum ada file terpilih";
+                infoStatus.style.color = "#888";
+                muatFoto();
             } else {
-                tampilkanNotifikasi("❌ Gagal mengunggah berkas.");
+                tampilToast("Gagal mengunggah foto!");
             }
-        } catch(e) { console.error(e); }
-    }
-
-    // FIX: RENDERING GRID UTAMA & EVENT LISTENER SENTUH LENGKAP
-    function renderTampilanGaleri() {
-        const grid = document.getElementById('mainGalleryGrid');
-        grid.innerHTML = '';
-
-        let tanggalFilterSekarang = dapatkanTeksFormatTanggal(objekTanggalAktif);
-        let dataSalinan = [...semuaDataFoto];
-
-        let filterData = dataSalinan.filter(item => {
-            if (kategoriTabAktif === 'sampah') return item.terhapus === true;
-            if (item.terhapus === true) return false;
-            if (kategoriTabAktif === 'semua' && item.tanggal === tanggalFilterSekarang) return true;
-            if (kategoriTabAktif === 'favorit') return item.favorit === true;
-            return false;
         });
 
-        if (filterData.length === 0) {
-            grid.innerHTML = `<div style="grid-column: span 2; text-align: center; color: #a0aec0; padding: 60px 0;">Tidak ada foto</div>`;
-            return;
-        }
-
-        filterData.forEach(foto => {
-            let card = document.createElement('div');
-            card.className = 'card-foto';
-
-            let cb = document.createElement('input');
-            cb.type = 'checkbox';
-            cb.className = 'select-checkbox';
-            cb.value = foto.namaFile;
-            cb.style.display = modeSeleksiMenyala ? 'block' : 'none';
-            card.appendChild(cb);
-
-            let imgCont = document.createElement('div');
-            imgCont.className = 'img-container';
+        // Kalender Tanggal Picker
+        document.getElementById('pilihKalender').addEventListener('change', function(e) {
+            if (!e.target.value) return;
+            const targetDate = new Date(e.target.value);
+            const opsiFormat = { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' };
+            const hasilFormatTeks = targetDate.toLocaleDateString('id-ID', opsiFormat);
+            const posisiIndex = daftarTgl.indexOf(hasilFormatTeks);
             
-            let img = document.createElement('img');
-            img.src = '/uploads/' + foto.namaFile;
-            img.loading = 'lazy';
-            imgCont.appendChild(img);
-            card.appendChild(imgCont);
-
-            // LOGIKA SELEKSI TEKAN LAMA & KLIK
-            let timerTekanLama;
-            let sudahBerpindahKeSeleksi = false;
-
-            const fungsiMulaiTekan = () => {
-                sudahBerpindahKeSeleksi = false;
-                timerTekanLama = setTimeout(() => {
-                    if (!modeSeleksiMenyala) {
-                        nyalakanModeSeleksi();
-                        cb.checked = true;
-                        sudahBerpindahKeSeleksi = true;
-                        tampilkanNotifikasi("📌 Mode seleksi aktif!");
-                    }
-                }, 700);
-            };
-
-            const fungsiLepasTekan = () => { clearTimeout(timerTekanLama); };
-            const fungsiKlikBiasa = () => {
-                if (sudahBerpindahKeSeleksi) return;
-                if (modeSeleksiMenyala) { cb.checked = !cb.checked; } 
-                else { bukaGambarBesar(foto.namaFile); }
-            };
-
-            imgCont.addEventListener('touchstart', fungsiMulaiTekan, { passive: true });
-            imgCont.addEventListener('touchend', fungsiLepasTekan, { passive: true });
-            imgCont.addEventListener('mousedown', fungsiMulaiTekan);
-            imgCont.addEventListener('mouseup', fungsiLepasTekan);
-            imgCont.addEventListener('click', fungsiKlikBiasa);
-
-            // KONTEN METADATA & UTILS CARD
-            let textCatatan = document.createElement('span');
-            textCatatan.className = 'catatan-text';
-            textCatatan.innerText = foto.catatan || "Tanpa Catatan";
-            card.appendChild(textCatatan);
-
-            let divMeta = document.createElement('div');
-            divMeta.className = 'meta-info';
-            divMeta.innerText = `🕒 Pukul ${foto.waktu || '00:00'}`;
-            card.appendChild(divMeta);
-
-            let divStats = document.createElement('div');
-            divStats.className = 'stats-info';
-            divStats.innerHTML = `👁️ ${foto.views || 0}x &nbsp; 📥 ${foto.downloads || 0}x`;
-            card.appendChild(divStats);
-
-            // PANEL BUTTON ACTION TERGANTUNG TAB
-            let divButtons = document.createElement('div');
-            divButtons.className = 'card-buttons';
-
-            if (kategoriTabAktif !== 'sampah') {
-                let divUpperRow = document.createElement('div');
-                divUpperRow.className = 'row-action-upper';
-
-                let btnUnduh = document.createElement('a');
-                btnUnduh.className = 'btn-card btn-unduh';
-                btnUnduh.href = `/unduh/${foto.namaFile}`;
-                btnUnduh.innerText = "Unduh";
-                btnUnduh.onclick = () => { setTimeout(() => { dapatkanKoleksiGaleri(); }, 1000); };
-                divUpperRow.appendChild(btnUnduh);
-
-                let btnFav = document.createElement('button');
-                btnFav.className = `btn-card btn-favorit ${foto.favorit ? 'is-fav' : ''}`;
-                btnFav.innerText = foto.favorit ? "❤️" : "❤️ Favorit";
-                btnFav.onclick = () => toggleAksiFavorit(foto.namaFile);
-                divUpperRow.appendChild(btnFav);
-
-                divButtons.appendChild(divUpperRow);
-
-                let btnHapus = document.createElement('button');
-                btnHapus.className = 'btn-card btn-hapus-utama';
-                btnHapus.innerText = "Hapus";
-                btnHapus.onclick = () => aksiHapusKeSampah(foto.namaFile);
-                divButtons.appendChild(btnHapus);
+            if (posisiIndex !== -1) {
+                indexTgl = posisiIndex;
+                renderGaleri();
             } else {
-                let btnPulih = document.createElement('button');
-                btnPulih.className = 'btn-card btn-pulih-utama';
-                btnPulih.innerText = "Pulihkan Foto";
-                btnPulih.onclick = () => aksiPulihkanFoto(foto.namaFile);
-                divButtons.appendChild(btnPulih);
-
-                let btnPermanen = document.createElement('button');
-                btnPermanen.className = 'btn-card btn-hapus-utama';
-                btnPermanen.innerText = "Hapus Permanen";
-                btnPermanen.onclick = () => aksiHapusPermanen(foto.namaFile);
-                divButtons.appendChild(btnPermanen);
+                tampilToast("Tidak ada foto pada tanggal tersebut");
             }
+        });
 
-            card.appendChild(divButtons);
-            grid.appendChild(card);
+        muatFoto();
+    });
+
+    function bukaInputKalender() {
+        document.getElementById('pilihKalender').showPicker();
+    }
+
+    function togglePilihSemua(masterCanvas) {
+        const checkboxes = document.querySelectorAll('.kotak-pilih-foto');
+        listItemTerpilih = [];
+        checkboxes.forEach(cb => {
+            cb.checked = masterCanvas.checked;
+            if (masterCanvas.checked) {
+                listItemTerpilih.push(cb.getAttribute('data-id'));
+            }
         });
     }
 
-    // MODE SELEKSI MASAL
-    function nyalakanModeSeleksi() {
-        modeSeleksiMenyala = true;
-        document.getElementById('barManajemenSeleksi').style.display = 'flex';
-        document.getElementById('checkAllMaster').checked = false;
-        
-        let btnAksi = document.getElementById('btnAksiMasal');
-        if (kategoriTabAktif === 'sampah') {
-            btnAksi.innerText = "Hapus Permanen";
-            btnAksi.style.background = "#000000";
+    function hitungCheckSatuan(cb, idFoto) {
+        if (cb.checked) {
+            listItemTerpilih.push(idFoto);
         } else {
-            btnAksi.innerText = "Hapus";
-            btnAksi.style.background = "#e53e3e";
+            listItemTerpilih = listItemTerpilih.filter(id => id !== idFoto);
         }
-        renderTampilanGaleri();
+        const totalBoxes = document.querySelectorAll('.kotak-pilih-foto').length;
+        document.getElementById('checkPilihSemua').checked = (listItemTerpilih.length === totalBoxes);
     }
 
-    function matikanModeSeleksi() {
-        modeSeleksiMenyala = false;
-        document.getElementById('barManajemenSeleksi').style.display = 'none';
-        renderTampilanGaleri();
+    function gantiFilterView(tipe) {
+        filterAktif = tipe;
+        
+        document.getElementById('tabSemua').classList.toggle('aktif', tipe === 'semua');
+        document.getElementById('tabFavorit').classList.toggle('aktif', tipe === 'favorit');
+        document.getElementById('tabTrash').classList.toggle('aktif', tipe === 'trash');
+        
+        listItemTerpilih = [];
+        document.getElementById('checkPilihSemua').checked = false;
+
+        if (tipe === 'trash') {
+            modeSeleksiTerbuka = true;
+            document.getElementById('panelSeleksiMasal').style.display = 'flex';
+            document.getElementById('grupTombolAksiNormal').style.display = 'none';
+            document.getElementById('grupTombolAksiTrash').style.display = 'flex';
+        } else {
+            modeSeleksiTerbuka = false;
+            document.getElementById('panelSeleksiMasal').style.display = 'none';
+        }
+        
+        indexTgl = 0;
+        muatFoto();
     }
 
-    function toggleCentangSemua(masterBox) {
-        document.querySelectorAll('.select-checkbox').forEach(cb => cb.checked = masterBox.checked);
+    function triggerModeSeleksiMasal() {
+        modeSeleksiTerbuka = true;
+        document.getElementById('panelSeleksiMasal').style.display = 'flex';
+        
+        if (filterAktif === 'trash') {
+            document.getElementById('grupTombolAksiNormal').style.display = 'none';
+            document.getElementById('grupTombolAksiTrash').style.display = 'flex';
+        } else {
+            document.getElementById('grupTombolAksiNormal').style.display = 'flex';
+            document.getElementById('grupTombolAksiTrash').style.display = 'none';
+        }
+        
+        document.querySelectorAll('.btn-action-danger').forEach(btn => btn.style.display = 'none');
+        document.querySelectorAll('.kotak-pilih-foto').forEach(box => box.style.display = 'block');
     }
 
-    function eksekusiAksiMasal() {
-        let cbTerpilih = Array.from(document.querySelectorAll('.select-checkbox:checked')).map(cb => cb.value);
-        if (cbTerpilih.length === 0) { tampilkanNotifikasi("⚠️ Pilih minimal satu foto!"); return; }
+    function batalkanModeSeleksi() {
+        modeSeleksiTerbuka = false;
+        listItemTerpilih = [];
+        document.getElementById('checkPilihSemua').checked = false;
+        document.getElementById('panelSeleksiMasal').style.display = 'none';
+        document.querySelectorAll('.btn-action-danger').forEach(btn => btn.style.display = 'block');
+        document.querySelectorAll('.kotak-pilih-foto').forEach(box => {
+            box.checked = false;
+            box.style.display = 'none';
+        });
+    }
 
-        let pesanPrompt = kategoriTabAktif === 'sampah' 
-            ? `Hapus permanen ${cbTerpilih.length} foto terpilih?` 
-            : `Pindahkan ${cbTerpilih.length} foto terpilih ke sampah?`;
+    async function muatFoto() {
+        let endpoint = '/api/photos?type=all';
+        if (filterAktif === 'favorit') endpoint = '/api/photos?type=fav';
+        if (filterAktif === 'trash') endpoint = '/api/photos?type=trash';
 
-        let endpointUrl = kategoriTabAktif === 'sampah' ? '/hapus-masal-permanen' : '/hapus-masal';
-        let warnaTombol = kategoriTabAktif === 'sampah' ? '#000000' : '#e53e3e';
+        const response = await fetch(endpoint, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const result = await response.json();
+        
+        dataGrup = {};
+        if (result.status === 'success' && result.data) {
+            result.data.forEach(item => {
+                const tgl = item.uploadedAt ? new Date(item.uploadedAt).toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) : "Minggu, 21 Juni 2026";
+                if (!dataGrup[tgl]) dataGrup[tgl] = [];
+                dataGrup[tgl].push(item);
+            });
+        }
 
-        bukaDialogKustom(pesanPrompt, async () => {
-            try {
-                let r = await fetch(endpointUrl, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ files: cbTerpilih })
+        daftarTgl = Object.keys(dataGrup);
+        if (indexTgl >= daftarTgl.length) indexTgl = 0;
+        renderGaleri();
+    }
+
+    function navigasi(arah) {
+        indexTgl += arah;
+        renderGaleri();
+    }
+
+    function renderGaleri() {
+        const galeriWeb = document.getElementById('galeriWeb');
+        const navArea = document.getElementById('navArea');
+        galeriWeb.innerHTML = '';
+
+        if (daftarTgl.length === 0) {
+            navArea.style.display = 'none';
+            galeriWeb.innerHTML = `<div style="text-align:center; padding:40px; color:#888; width:100%;">Tidak ada foto untuk ditampilkan di sini</div>`;
+            return;
+        }
+
+        navArea.style.display = 'flex';
+        const tglSekarang = daftarTgl[indexTgl];
+        document.getElementById('tglAktif').innerText = tglSekarang;
+
+        document.getElementById('btnPrev').disabled = (indexTgl === 0);
+        document.getElementById('btnNext').disabled = (indexTgl === daftarTgl.length - 1);
+
+        const containerGrid = document.createElement('div');
+        containerGrid.className = 'grid-foto';
+
+        dataGrup[tglSekarang].forEach(item => {
+            const fotoBox = document.createElement('div');
+            fotoBox.className = 'foto-box';
+            fotoBox.innerHTML = `
+                <input type="checkbox" class="kotak-pilih-foto" data-id="${item._id}" onchange="hitungCheckSatuan(this, '${item._id}')" style="${modeSeleksiTerbuka ? 'display:block;' : 'display:none;'}">
+                <div class="foto-wrapper-kotak" onclick="bukaFoto('${item.imageUrl}')">
+                    <img src="${item.imageUrl}">
+                    ${item.isFavorite ? `<div class="badge-hati-melayang">❤️</div>` : ''}
+                </div>
+                <div class="info-teks-foto">${item.title || 'Tanpa Judul'}</div>
+                <div class="area-tombol">
+                    <a href="${item.imageUrl}" target="_blank" class="btn-download">Unduh</a>
+                    ${filterAktif !== 'trash' ? `
+                        <button class="btn-favorit-bawah" onclick="aksiFavorit('${item._id}', ${item.isFavorite}, event)">
+                            ${item.isFavorite ? '💔' : '❤️'}
+                        </button>
+                    ` : ''}
+                </div>
+                ${filterAktif !== 'trash' ? `
+                    <button class="btn-action-danger" onclick="aksiHapus('${item._id}')" style="${modeSeleksiTerbuka ? 'display:none;' : 'display:block;'}">Pindahkan ke Sampah</button>
+                ` : `
+                    <button class="btn-modal" style="background:#34c759; color:#fff; width:100%; padding:8px; border-radius:6px; margin-top:6px; ${modeSeleksiTerbuka ? 'display:none;' : 'display:block;'}" onclick="aksiPulihkan('${item._id}')">Pulihkan Foto</button>
+                    <button class="btn-action-danger" onclick="aksiHapusPermanen('${item._id}')" style="${modeSeleksiTerbuka ? 'display:none;' : 'display:block;'}">Hapus Permanen</button>
+                `}
+            `;
+            containerGrid.appendChild(fotoBox);
+        });
+
+        galeriWeb.appendChild(containerGrid);
+    }
+
+    function bukaFoto(url) {
+        document.getElementById('fotoBesar').src = url;
+        document.getElementById('boxLightbox').style.display = 'flex';
+    }
+
+    function tutupFoto() {
+        document.getElementById('boxLightbox').style.display = 'none';
+    }
+
+    async function aksiFavorit(id, status, e) {
+        e.stopPropagation();
+        await fetch(`/api/photos/${id}/favorite`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+            body: JSON.stringify({ isFavorite: !status })
+        });
+        tampilToast(!status ? "Ditambahkan ke Favorit ❤️" : "Dihapus dari Favorit");
+        muatFoto();
+    }
+
+    async function aksiHapus(id) {
+        await fetch(`/api/photos/${id}/trash`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+            body: JSON.stringify({ isDeleted: true })
+        });
+        tampilToast("Foto dipindah ke sampah 🗑️");
+        muatFoto();
+    }
+
+    async function aksiPulihkan(id) {
+        await fetch(`/api/photos/${id}/trash`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+            body: JSON.stringify({ isDeleted: false })
+        });
+        tampilToast("Foto berhasil dipulihkan!");
+        muatFoto();
+    }
+
+    async function aksiHapusPermanen(id) {
+        if (confirm("Hapus foto ini secara permanen dari Cloudinary?")) {
+            await fetch(`/api/photos/${id}`, {
+                method: 'DELETE',
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            tampilToast("Foto terhapus permanen!");
+            muatFoto();
+        }
+    }
+
+    // --- LOGIKA AKSI MASAL ---
+    async function prosesHapusMasal() {
+        if (listItemTerpilih.length === 0) return tampilToast("Pilih foto terlebih dahulu!");
+        for (let id of listItemTerpilih) {
+            await fetch(`/api/photos/${id}/trash`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                body: JSON.stringify({ isDeleted: true })
+            });
+        }
+        tampilToast(`${listItemTerpilih.length} Foto dipindah ke sampah`);
+        batalkanModeSeleksi();
+        muatFoto();
+    }
+
+    async function prosesPulihkanMasal() {
+        if (listItemTerpilih.length === 0) return tampilToast("Pilih foto terlebih dahulu!");
+        for (let id of listItemTerpilih) {
+            await fetch(`/api/photos/${id}/trash`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                body: JSON.stringify({ isDeleted: false })
+            });
+        }
+        tampilToast(`${listItemTerpilih.length} Foto berhasil dipulihkan`);
+        batalkanModeSeleksi();
+        muatFoto();
+    }
+
+    async function prosesHapusPermanenMasal() {
+        if (listItemTerpilih.length === 0) return tampilToast("Pilih foto terlebih dahulu!");
+        if (confirm(`Hapus permanen ${listItemTerpilih.length} foto terpilih dari Cloudinary?`)) {
+            for (let id of listItemTerpilih) {
+                await fetch(`/api/photos/${id}`, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': `Bearer ${token}` }
                 });
-                if (r.ok) {
-                    tampilkanNotifikasi("🔥 Aksi masal sukses dieksekusi!");
-                    matikanModeSeleksi();
-                    dapatkanKoleksiGaleri();
-                }
-            } catch(e) { console.error(e); }
-        }, warnaTombol);
+            }
+            tampilToast("Foto terpilih berhasil dihapus permanen");
+            batalkanModeSeleksi();
+            muatFoto();
+        }
     }
-
-    // Pemanggilan awal saat halaman dimuat
-    window.onload = dapatkanKoleksiGaleri;
 </script>
 </body>
 </html>
