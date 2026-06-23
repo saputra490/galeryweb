@@ -327,7 +327,7 @@
         if (inputKamera) inputKamera.addEventListener('change', () => updateStatus(inputKamera, inputGaleri));
         if (inputGaleri) inputGaleri.addEventListener('change', () => updateStatus(inputGaleri, inputKamera));
 
-        // Pengirim Upload Form (SUDAH DISINKRONKAN KE PARAMETER BACKEND)
+        // Pengirim Upload Form dengan Rute Endpoint Absolut
         document.querySelector('form').addEventListener('submit', async function(e) {
             e.preventDefault();
             const fileInput = inputKamera.files.length > 0 ? inputKamera : inputGaleri;
@@ -336,14 +336,14 @@
             const formData = new FormData();
             formData.append('photo', fileInput.files[0]);
             
-            // Perbaikan krusial: caption dikirim sebagai field 'title' agar diterima backend
             const captionValue = document.querySelector('.input-caption').value;
             formData.append('title', captionValue || 'Tanpa Judul');
 
             tampilToast("Sedang mengunggah ke Cloudinary...");
 
             try {
-                const res = await fetch('/api/photos/upload', {
+                // Perbaikan: Rute diubah ke domain lengkap agar tidak salah jalur koneksi di Vercel
+                const res = await fetch('https://galeryweb-n7yx.vercel.app/api/photos/upload', {
                     method: 'POST',
                     headers: { 'Authorization': `Bearer ${token}` },
                     body: formData
