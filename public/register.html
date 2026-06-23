@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Daftar - Galeri</title>
+    <style>
+        /* --- BACKGROUND UTAMA --- */
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: #f5f5f7;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        /* --- KOTAK FORM (MATCHING DENGAN LOGIN) --- */
+        .card-register {
+            background: #ffffff;
+            padding: 40px 30px;
+            border-radius: 28px;
+            width: 90%;
+            max-width: 360px;
+            text-align: center;
+            box-sizing: border-box;
+        }
+
+        /* --- LENCANA HIJAU MUDA --- */
+        .badge-hijau {
+            background-color: #eaf7ec;
+            color: #2e7d32;
+            padding: 6px 16px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 500;
+            display: inline-block;
+            margin-bottom: 12px;
+        }
+
+        h2 {
+            margin: 0 0 6px 0;
+            font-size: 26px;
+            font-weight: bold;
+            color: #0d0d0d;
+        }
+
+        .sub-judul {
+            font-size: 14px;
+            color: #86868b;
+            margin-bottom: 30px;
+        }
+
+        /* --- FORM FIELD --- */
+        .grup-input {
+            text-align: left;
+            margin-bottom: 20px;
+        }
+
+        label {
+            font-size: 13px;
+            font-weight: 600;
+            color: #1d1d1f;
+            display: block;
+            margin-bottom: 8px;
+        }
+
+        input {
+            width: 100%;
+            padding: 16px;
+            background-color: #f2f2f7;
+            border: none;
+            border-radius: 14px;
+            font-size: 14px;
+            color: #000000;
+            box-sizing: border-box;
+            outline: none;
+        }
+
+        input::placeholder {
+            color: #a1a1a6;
+        }
+
+        /* --- TOMBOL HITAM PEKAT --- */
+        .btn-daftar {
+            width: 100%;
+            padding: 16px;
+            background-color: #000000;
+            color: #ffffff;
+            border: none;
+            border-radius: 14px;
+            font-size: 15px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+
+        /* --- LINK BAWAH --- */
+        .tautan-bawah {
+            margin-top: 24px;
+            font-size: 13px;
+            color: #86868b;
+        }
+
+        .tautan-bawah a {
+            color: #000000;
+            text-decoration: none;
+            font-weight: bold;
+        }
+
+        .notif-error {
+            color: #ff3b30;
+            font-size: 13px;
+            margin-top: 12px;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+
+<div class="card-register">
+    <div class="badge-hijau">Selamat Datang</div>
+    <h2>Daftar</h2>
+    <div class="sub-judul">Buat akun anda untuk melanjutkan</div>
+    
+    <form id="formRegister">
+        <div class="grup-input">
+            <label>Nama Pengguna</label>
+            <input type="text" id="regUsername" placeholder="Masukkan nama pengguna" required>
+        </div>
+        <div class="grup-input">
+            <label>Kata Sandi</label>
+            <input type="password" id="regPassword" placeholder="Masukkan kata sandi" required>
+        </div>
+        
+        <button type="submit" class="btn-daftar">Daftar</button>
+        <div id="boxError" class="notif-error"></div>
+    </form>
+    
+    <div class="tautan-bawah">
+        Sudah punya akun? <a href="login.html">Masuk di sini</a>
+    </div>
+</div>
+
+<script>
+    document.getElementById('formRegister').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        const user = document.getElementById('regUsername').value;
+        const pass = document.getElementById('regPassword').value;
+        const boxError = document.getElementById('boxError');
+        
+        boxError.style.display = 'none';
+
+        try {
+            const res = await fetch('/api/auth/register', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username: user, password: pass })
+            });
+            const data = await res.json();
+            
+            if (res.ok) {
+                alert('Akun berhasil dibuat! Silakan masuk.');
+                window.location.href = 'login.html';
+            } else {
+                boxError.innerText = data.message || 'Gagal mendaftarkan akun.';
+                boxError.style.display = 'block';
+            }
+        } catch (err) {
+            boxError.innerText = 'Gagal terhubung ke server backend.';
+            boxError.style.display = 'block';
+        }
+    });
+</script>
+</body>
+</html>
