@@ -13,7 +13,10 @@ app.use(express.urlencoded({ extended: true }));
 app.use(cors());
 app.use(cookieParser('kunci_rahasia_galeri')); 
 
-// KONEKSI MONGODB SERVERLESS (Aman menggunakan Promise)
+// ATURAN FILE STATIS (CSS, Gambar Lokal, JS)
+app.use(express.static(path.join(__dirname, 'public')));
+
+// KONEKSI MONGODB SERVERLESS
 const uri = process.env.MONGODB_URI;
 let client;
 let clientPromise;
@@ -59,18 +62,18 @@ async function pastikanLogin(req, res, next) {
   next();
 }
 
-// 1. RUTE UTAMA (Halaman awal pendaftaran / masuk)
+// 1. RUTE UTAMA (Membuka login.html di dalam folder public)
 app.get('/', (req, res) => {
   const usernameCookie = req.signedCookies.user_session;
   if (usernameCookie) {
     return res.redirect('/dashboard');
   }
-  res.sendFile(path.join(__dirname, 'index.html'));
+  res.sendFile(path.join(__dirname, 'public', 'login.html'));
 });
 
-// 2. RUTE DASHBOARD UTAMA
+// 2. RUTE DASHBOARD UTAMA (Membuka dashboard.html di dalam folder public)
 app.get('/dashboard', pastikanLogin, (req, res) => {
-  res.sendFile(path.join(__dirname, 'index.html')); 
+  res.sendFile(path.join(__dirname, 'public', 'dashboard.html')); 
 });
 
 // 3. RUTE DAFTAR AKUN (REGISTER)
@@ -151,13 +154,11 @@ app.get('/logout', (req, res) => {
   res.redirect('/');
 });
 
-// MENAMPILKAN ASET STATIS SEPERTI CSS/JS JIKA ADA (Ditempatkan di paling bawah rute)
-app.use(express.static(__dirname));
-
-// MENJALANKAN SERVER LOCAL
+// MENJALANKAN SERVER LOCAL / CLOUD
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Server aktif di port ${PORT}`);
 });
 
 module.exports = app;
+
