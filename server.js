@@ -1,4 +1,4 @@
-const express = require('express');
+9const express = require('express');
 const path = require('path');
 const cors = require('cors');
 const cookieParser = require('cookie-parser'); 
@@ -6,6 +6,7 @@ const cloudinary = require('cloudinary').v2;
 const multer = require('multer');
 const { CloudinaryStorage } = require('multer-storage-cloudinary');
 const { MongoClient } = require('mongodb');
+const fs = require('fs'); // Modul tambahan untuk membaca file secara utuh
 
 const app = express();
 app.use(express.json());
@@ -13,10 +14,10 @@ app.use(express.urlencoded({ extended: true }));
 app.use(cors());
 app.use(cookieParser('kunci_rahasia_galeri')); 
 
-// Atur folder statis dengan path absolut
+// Atur folder statis
 app.use(express.static(path.resolve(__dirname, 'public')));
 
-// KONEKSI MONGODB MODEL SERVERLESS (Global Cached Connection)
+// KONEKSI MONGODB MODEL SERVERLESS
 const uri = process.env.MONGODB_URI || process.env.URI_MONGODB;
 let cachedClient = null;
 let cachedDb = null;
@@ -62,18 +63,30 @@ function pastikanLogin(req, res, next) {
   next();
 }
 
-// 1. RUTE UTAMA
+// 1. RUTE UTAMA (Menggunakan fs.readFileSync untuk memecahkan eror 416)
 app.get('/', (req, res) => {
   const usernameCookie = req.signedCookies.user_session;
   if (usernameCookie) {
     return res.redirect('/dashboard');
   }
-  res.sendFile(path.resolve(__dirname, 'public', 'login.html'));
+  try {
+    const htmlKosongFix = fs.readFileSync(path.resolve(__dirname, 'public', 'login.html'), 'utf8');
+    res.setHeader('Content-Type', 'text/html');
+    res.status(200).send(htmlKosongFix);
+  } catch (err) {
+    res.status(500).send("Gagal memuat halaman login statis.");
+  }
 });
 
 // 2. RUTE DASHBOARD UTAMA
 app.get('/dashboard', pastikanLogin, (req, res) => {
-  res.sendFile(path.resolve(__dirname, 'public', 'dashboard.html')); 
+  try {
+    const dashboardHtml = fs.readFileSync(path.resolve(__dirname, 'public', 'dashboard.html'), 'utf8');
+    res.setHeader('Content-Type', 'text/html');
+    res.status(200).send(dashboardHtml);
+  } catch (err) {
+    res.status(500).send("Gagal memuat halaman dashboard.");
+  }
 });
 
 // 3. RUTE DAFTAR AKUN (REGISTER)
@@ -161,3 +174,4 @@ app.listen(PORT, () => {
 });
 
 module.exports = app;
+
