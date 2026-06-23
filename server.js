@@ -1,7 +1,7 @@
 const express = require('express');
 const path = require('path');
 const cors = require('cors');
-const cookieParser = require('cookie-parser'); // Ditambahkan agar sesi login tersimpan di browser
+const cookieParser = require('cookie-parser'); 
 const cloudinary = require('cloudinary').v2;
 const multer = require('multer');
 const { CloudinaryStorage } = require('multer-storage-cloudinary');
@@ -11,7 +11,7 @@ const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cors());
-app.use(cookieParser('kunci_rahasia_galeri')); // Mengaktifkan cookie aman
+app.use(cookieParser('kunci_rahasia_galeri')); 
 
 // KONEKSI MONGODB DINAMIS (ANTISIPASI VERCEL SERVERLESS RESET)
 const uri = process.env.MONGODB_URI;
@@ -41,7 +41,8 @@ const storage = new CloudinaryStorage({
 });
 const upload = multer({ storage: storage });
 
-app.use(express.static(path.join(__dirname, 'public')));
+// PERBAIKAN UTAMA: Menggunakan __dirname langsung karena aset berada di root `photo-app`
+app.use(express.static(__dirname));
 
 // MIDDLEWARE CEK LOGIN (Mencegah user masuk dashboard sebelum login)
 async function pastikanLogin(req, res, next) {
@@ -101,8 +102,8 @@ app.post('/login', async (req, res) => {
 
 // 3. RUTE DASHBOARD UTAMA (Diproteksi harus login dulu)
 app.get('/dashboard', pastikanLogin, async (req, res) => {
-  // Sajikan halaman dashboard utama kamu di sini (misal index.html atau dashboard.html)
-  res.sendFile(path.join(__dirname, 'public', 'dashboard.html')); 
+  // PERBAIKAN: Langsung membaca index.html dari root folder proyek
+  res.sendFile(path.join(__dirname, 'index.html')); 
 });
 
 // 4. RUTE AMBIL DAFTAR FOTO DARI MONGODB
@@ -142,10 +143,11 @@ app.get('/logout', (req, res) => {
   res.redirect('/login');
 });
 
-// MENJALANKAN SERVER LOCAL
+// MENJALANKAN SERVER LOCAL / CLOUD
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Server aktif di port ${PORT}`);
 });
 
 module.exports = app;
+
