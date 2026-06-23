@@ -13,7 +13,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use(cors());
 app.use(cookieParser('kunci_rahasia_galeri')); 
 
-// KONEKSI MONGODB SERVERLESS (Aman & Menggunakan Promise)
+// KONEKSI MONGODB SERVERLESS (Aman menggunakan Promise)
 const uri = process.env.MONGODB_URI;
 let client;
 let clientPromise;
@@ -22,7 +22,7 @@ if (!uri) {
   console.error("PENTING: Variabel MONGODB_URI belum diatur di Environment Variables Vercel!");
 } else {
   client = new MongoClient(uri);
-  clientPromise = client.connect(); // Menyimpan promise koneksi
+  clientPromise = client.connect();
 }
 
 async function dapatkanKoleksi(namaKoleksi) {
@@ -50,10 +50,7 @@ const storage = new CloudinaryStorage({
 });
 const upload = multer({ storage: storage });
 
-// Membaca file statis langsung dari root folder proyek
-app.use(express.static(__dirname));
-
-// MIDDLEWARE PENGAMAN DASHBOARD
+// MIDDLEWARE PENGAMAN AKSES
 async function pastikanLogin(req, res, next) {
   const usernameCookie = req.signedCookies.user_session;
   if (!usernameCookie) {
@@ -62,7 +59,7 @@ async function pastikanLogin(req, res, next) {
   next();
 }
 
-// 1. RUTE UTAMA (Menyajikan halaman login/index pertama kali)
+// 1. RUTE UTAMA (Halaman awal pendaftaran / masuk)
 app.get('/', (req, res) => {
   const usernameCookie = req.signedCookies.user_session;
   if (usernameCookie) {
@@ -71,7 +68,12 @@ app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
 });
 
-// 2. RUTE DAFTAR AKUN (REGISTER)
+// 2. RUTE DASHBOARD UTAMA
+app.get('/dashboard', pastikanLogin, (req, res) => {
+  res.sendFile(path.join(__dirname, 'index.html')); 
+});
+
+// 3. RUTE DAFTAR AKUN (REGISTER)
 app.post('/register', async (req, res) => {
   try {
     const { username, password } = req.body;
@@ -89,11 +91,11 @@ app.post('/register', async (req, res) => {
     res.send("<script>alert('Akun berhasil dibuat! Silakan login.'); window.location='/';</script>");
   } catch (err) {
     console.error(err);
-    res.status(500).send("Gagal mendaftarkan akun. Pastikan MONGODB_URI di Vercel sudah benar.");
+    res.status(500).send("Gagal mendaftarkan akun ke database cloud.");
   }
 });
 
-// 3. RUTE MASUK AKUN (LOGIN)
+// 4. RUTE MASUK AKUN (LOGIN)
 app.post('/login', async (req, res) => {
   try {
     const { username, password } = req.body;
@@ -112,19 +114,14 @@ app.post('/login', async (req, res) => {
   }
 });
 
-// 4. RUTE DASHBOARD UTAMA
-app.get('/dashboard', pastikanLogin, async (req, res) => {
-  res.sendFile(path.join(__dirname, 'index.html')); 
-});
-
-// 5. RUTE AMBIL DATA FOTO
+// 5. RUTE AMBIL DATA FOTO DARI DATABASE
 app.get('/api/foto', pastikanLogin, async (req, res) => {
   try {
     const fotoDb = await dapatkanKoleksi('foto');
     const daftarFoto = await fotoDb.find({}).toArray();
     res.json(daftarFoto);
   } catch (err) {
-    res.status(500).json({ error: "Gagal memuat foto dari database" });
+    res.status(500).json({ error: "Gagal memuat foto" });
   }
 });
 
@@ -144,7 +141,7 @@ app.post('/api/upload', pastikanLogin, upload.single('foto'), async (req, res) =
     res.redirect('/dashboard');
   } catch (err) {
     console.error(err);
-    res.status(500).send("Gagal menyimpan data foto ke Cloudinary/MongoDB.");
+    res.status(500).send("Gagal menyimpan data foto ke database cloud.");
   }
 });
 
@@ -154,7 +151,10 @@ app.get('/logout', (req, res) => {
   res.redirect('/');
 });
 
-// MENJALANKAN SERVER
+// MENAMPILKAN ASET STATIS SEPERTI CSS/JS JIKA ADA (Ditempatkan di paling bawah rute)
+app.use(express.static(__dirname));
+
+// MENJALANKAN SERVER LOCAL
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Server aktif di port ${PORT}`);
