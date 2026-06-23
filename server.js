@@ -12,7 +12,7 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 const JWT_SECRET = process.env.JWT_SECRET || 'rahasia_super_aman_123';
 
-// 1. Konfigurasi Cloudinary (Mengambil dari Environment Variables Vercel)
+// 1. Konfigurasi Cloudinary
 cloudinary.config({
     cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
     api_key: process.env.CLOUDINARY_API_KEY,
@@ -29,48 +29,45 @@ const storage = new CloudinaryStorage({
 });
 const upload = multer({ storage: storage });
 
-// 3. Middleware
+// 3. Middleware Utama
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
 
-// 4. Koneksi MongoDB Aman
-const client = new MongoClient(process.env.MONGODB_URI || 'mongodb://localhost:27017/galeri');
-let db;
+// 4. Koneksi MongoDB dengan Proteksi Variabel Aman
+const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/galeri';
+let db = null;
 
 async function connectDB() {
     try {
+        const client = new MongoClient(MONGODB_URI);
         await client.connect();
         db = client.db();
-        console.log("Terhubung ke MongoDB");
+        console.log("Database MongoDB Berhasil Terhubung!");
     } catch (err) {
-        console.error("Gagal koneksi database:", err.message);
+        console.error("PERINGATAN KONEKSI DATABASE:", err.message);
+        // Tetap biarkan aplikasi berjalan walaupun database cloud belum siap
     }
 }
 connectDB();
 
-// 5. Middleware Autentikasi JWT (Melindungi halaman Dashboard/API)
+// 5. Middleware Autentikasi JWT
 const authenticateToken = (req, res, next) => {
     const token = req.cookies.token || req.headers['authorization']?.split(' ')[1];
     if (!token) return res.status(401).json({ status: 'error', message: 'Akses ditolak, silakan login!' });
 
     jwt.verify(token, JWT_SECRET, (err, user) => {
-        if (err) return res.status(403).json({ status: 'error', message: 'Token tidak valid atau kedaluwarsa!' });
+        if (err) return res.status(403).json({ status: 'error', message: 'Sesi habis, silakan login kembali!' });
         req.user = user;
         next();
     });
 };
 
-// --- ENDPOINT API LENGKAP ---
+// --- ENDPOINT API UTAMA ---
 
-// Cek status server backend
-app.get('/status-server', (req, res) => {
-    res.send("<h1>📸 API Server Galeri Foto Aktif Sempurna</h1><p>Koneksi database & Cloudinary berjalan dengan normal di Vercel.</p>");
-});
-
-// Arahkan halaman utama ke halaman login
+// Halaman Utama otomatis mengarah ke login.html di dalam folder public
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'login.html'));
 });
@@ -81,9 +78,11 @@ app.post('/api/auth/register', async (req, res) => {
         const { username, password } = req.body;
         if (!username || !password) return res.status(400).json({ status: 'error', message: 'Data tidak lengkap!' });
 
+        if (!db) return res.status(500).json({ status: 'error', message: 'Server Database belum siap terhubung!' });
+
         const usersCollection = db.collection('users');
         const userExists = await usersCollection.findOne({ username });
-        if (userExists) return res.status(400).json({ status: 'error', message: 'Username sudah terdaftar!' });
+        if (userExists) return res.status(400).json({ status: 'error', message: 'Username sudah digunakan!' });
 
         await usersCollection.insertOne({ username, password, createdAt: new Date() });
         res.json({ status: 'success', message: 'Registrasi berhasil!' });
@@ -92,29 +91,40 @@ app.post('/api/auth/register', async (req, res) => {
     }
 });
 
-// API Login Pengguna
+// API Login Pengguna dengan Proteksi Eror Undefined 'collection'
 app.post('/api/auth/login', async (req, res) => {
     try {
         const { username, password } = req.body;
-        const usersCollection = db.collection('users');
-        
-        const user = await usersCollection.findOne({ username, password });
-        if (!user) return res.status(401).json({ status: 'error', message: 'Username atau password salah!' });
 
-        // Buat token JWT
-        const token = jwt.sign({ id: user._id, username: user.username }, JWT_SECRET, { expiresIn: '24h' });
+        // Validasi jika koneksi MongoDB cloud Anda belum aktif/gagal loading
+        if (!db) {
+            return res.status(500).json({ 
+                status: 'error', 
+                message: 'Koneksi database cloud Vercel Anda belum siap terhubung. SIlakan cek MONGODB_URI di Environment Variables!' 
+            });
+        }
+
+        const usersCollection = db.collection('users');
+        const user = await usersCollection.findOne({ username, password });
         
-        // Simpan token di HTTP-Only Cookie agar aman
+        if (!user) {
+            return res.status(401).json({ status: 'error', message: 'Username atau password salah!' });
+        }
+
+        const token = jwt.sign({ id: user._id, username: user.username }, JWT_SECRET, { expiresIn: '24h' });
         res.cookie('token', token, { httpOnly: true, secure: true, sameSite: 'strict' });
+        
         res.json({ status: 'success', token, message: 'Login sukses!' });
     } catch (err) {
         res.status(500).json({ status: 'error', message: err.message });
     }
 });
 
-// API Mengambil Semua Foto (Hanya jika sudah login)
+// API Mengambil Semua Foto di Galeri
 app.get('/api/photos', authenticateToken, async (req, res) => {
     try {
+        if (!db) return res.status(500).json({ status: 'error', message: 'Database belum terhubung!' });
+
         const photosCollection = db.collection('photos');
         const photos = await photosCollection.find({ userId: req.user.id }).sort({ uploadedAt: -1 }).toArray();
         res.json({ status: 'success', data: photos });
@@ -123,22 +133,23 @@ app.get('/api/photos', authenticateToken, async (req, res) => {
     }
 });
 
-// API Mengunggah Foto Ke Cloudinary & Menyimpan Link ke MongoDB
+// API Unggah Foto Ke Cloudinary & Simpan ke MongoDB
 app.post('/api/photos/upload', authenticateToken, upload.single('photo'), async (req, res) => {
     try {
-        if (!req.file) return res.status(400).json({ status: 'error', message: 'Gagal mengunggah file gambar!' });
+        if (!req.file) return res.status(400).json({ status: 'error', message: 'File gambar wajib diunggah!' });
+        if (!db) return res.status(500).json({ status: 'error', message: 'Database tidak terdeteksi!' });
 
         const photosCollection = db.collection('photos');
         const newPhoto = {
             userId: req.user.id,
-            imageUrl: req.file.path, // URL dari Cloudinary
+            imageUrl: req.file.path,
             publicId: req.file.filename,
             title: req.body.title || 'Tanpa Judul',
             uploadedAt: new Date()
         };
 
         await photosCollection.insertOne(newPhoto);
-        res.json({ status: 'success', message: 'Foto berhasil disimpan!', data: newPhoto });
+        res.json({ status: 'success', message: 'Foto berhasil disimpan di galeri!', data: newPhoto });
     } catch (err) {
         res.status(500).json({ status: 'error', message: err.message });
     }
@@ -148,16 +159,15 @@ app.post('/api/photos/upload', authenticateToken, upload.single('photo'), async 
 app.delete('/api/photos/:id', authenticateToken, async (req, res) => {
     try {
         const photoId = req.params.id;
-        const photosCollection = db.collection('photos');
+        if (!db) return res.status(500).json({ status: 'error', message: 'Database belum aktif!' });
 
+        const photosCollection = db.collection('photos');
         const photo = await photosCollection.findOne({ _id: new ObjectId(photoId), userId: req.user.id });
         if (!photo) return res.status(404).json({ status: 'error', message: 'Foto tidak ditemukan!' });
 
-        // Hapus dari Cloudinary terlebih dahulu
         await cloudinary.uploader.destroy(photo.publicId);
-
-        // Hapus dari MongoDB
         await photosCollection.deleteOne({ _id: new ObjectId(photoId) });
+
         res.json({ status: 'success', message: 'Foto berhasil dihapus!' });
     } catch (err) {
         res.status(500).json({ status: 'error', message: err.message });
@@ -166,7 +176,7 @@ app.delete('/api/photos/:id', authenticateToken, async (req, res) => {
 
 // Jalankan Server
 app.listen(PORT, () => {
-    console.log(`Server aktif di port ${PORT}`);
+    console.log(`Server aktif berjalan di port ${PORT}`);
 });
 
 module.exports = app;
