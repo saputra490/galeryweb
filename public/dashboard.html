@@ -327,7 +327,7 @@
         if (inputKamera) inputKamera.addEventListener('change', () => updateStatus(inputKamera, inputGaleri));
         if (inputGaleri) inputGaleri.addEventListener('change', () => updateStatus(inputGaleri, inputKamera));
 
-        // Pengirim Upload Form
+        // Pengirim Upload Form (SUDAH DISINKRONKAN KE PARAMETER BACKEND)
         document.querySelector('form').addEventListener('submit', async function(e) {
             e.preventDefault();
             const fileInput = inputKamera.files.length > 0 ? inputKamera : inputGaleri;
@@ -335,24 +335,35 @@
 
             const formData = new FormData();
             formData.append('photo', fileInput.files[0]);
-            formData.append('title', document.querySelector('.input-caption').value);
+            
+            // Perbaikan krusial: caption dikirim sebagai field 'title' agar diterima backend
+            const captionValue = document.querySelector('.input-caption').value;
+            formData.append('title', captionValue || 'Tanpa Judul');
 
             tampilToast("Sedang mengunggah ke Cloudinary...");
 
-            const res = await fetch('/api/photos/upload', {
-                method: 'POST',
-                headers: { 'Authorization': `Bearer ${token}` },
-                body: formData
-            });
+            try {
+                const res = await fetch('/api/photos/upload', {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${token}` },
+                    body: formData
+                });
 
-            if (res.ok) {
-                tampilToast("Foto berhasil diunggah!");
-                document.querySelector('.input-caption').value = "";
-                infoStatus.innerText = "Belum ada file terpilih";
-                infoStatus.style.color = "#888";
-                muatFoto();
-            } else {
-                tampilToast("Gagal mengunggah foto!");
+                const data = await res.json();
+
+                if (res.ok && data.status === 'success') {
+                    tampilToast("Foto berhasil diunggah!");
+                    document.querySelector('.input-caption').value = "";
+                    infoStatus.innerText = "Belum ada file terpilih";
+                    infoStatus.style.color = "#888";
+                    inputKamera.value = "";
+                    inputGaleri.value = "";
+                    muatFoto();
+                } else {
+                    tampilToast("Gagal mengunggah: " + (data.message || "Terjadi kesalahan"));
+                }
+            } catch (error) {
+                tampilToast("Koneksi gagal saat mengunggah foto!");
             }
         });
 
@@ -514,18 +525,7 @@
                 <div class="info-teks-foto">${item.title || 'Tanpa Judul'}</div>
                 <div class="area-tombol">
                     <a href="${item.imageUrl}" target="_blank" class="btn-download">Unduh</a>
-                    ${filterAktif !== 'trash' ? `
-                        <button class="btn-favorit-bawah" onclick="aksiFavorit('${item._id}', ${item.isFavorite}, event)">
-                            ${item.isFavorite ? '💔' : '❤️'}
-                        </button>
-                    ` : ''}
                 </div>
-                ${filterAktif !== 'trash' ? `
-                    <button class="btn-action-danger" onclick="aksiHapus('${item._id}')" style="${modeSeleksiTerbuka ? 'display:none;' : 'display:block;'}">Pindahkan ke Sampah</button>
-                ` : `
-                    <button class="btn-modal" style="background:#34c759; color:#fff; width:100%; padding:8px; border-radius:6px; margin-top:6px; ${modeSeleksiTerbuka ? 'display:none;' : 'display:block;'}" onclick="aksiPulihkan('${item._id}')">Pulihkan Foto</button>
-                    <button class="btn-action-danger" onclick="aksiHapusPermanen('${item._id}')" style="${modeSeleksiTerbuka ? 'display:none;' : 'display:block;'}">Hapus Permanen</button>
-                `}
             `;
             containerGrid.appendChild(fotoBox);
         });
@@ -534,98 +534,13 @@
     }
 
     function bukaFoto(url) {
+        if (modeSeleksiTerbuka) return;
         document.getElementById('fotoBesar').src = url;
         document.getElementById('boxLightbox').style.display = 'flex';
     }
 
     function tutupFoto() {
         document.getElementById('boxLightbox').style.display = 'none';
-    }
-
-    async function aksiFavorit(id, status, e) {
-        e.stopPropagation();
-        await fetch(`/api/photos/${id}/favorite`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-            body: JSON.stringify({ isFavorite: !status })
-        });
-        tampilToast(!status ? "Ditambahkan ke Favorit ❤️" : "Dihapus dari Favorit");
-        muatFoto();
-    }
-
-    async function aksiHapus(id) {
-        await fetch(`/api/photos/${id}/trash`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-            body: JSON.stringify({ isDeleted: true })
-        });
-        tampilToast("Foto dipindah ke sampah 🗑️");
-        muatFoto();
-    }
-
-    async function aksiPulihkan(id) {
-        await fetch(`/api/photos/${id}/trash`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-            body: JSON.stringify({ isDeleted: false })
-        });
-        tampilToast("Foto berhasil dipulihkan!");
-        muatFoto();
-    }
-
-    async function aksiHapusPermanen(id) {
-        if (confirm("Hapus foto ini secara permanen dari Cloudinary?")) {
-            await fetch(`/api/photos/${id}`, {
-                method: 'DELETE',
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            tampilToast("Foto terhapus permanen!");
-            muatFoto();
-        }
-    }
-
-    // --- LOGIKA AKSI MASAL ---
-    async function prosesHapusMasal() {
-        if (listItemTerpilih.length === 0) return tampilToast("Pilih foto terlebih dahulu!");
-        for (let id of listItemTerpilih) {
-            await fetch(`/api/photos/${id}/trash`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-                body: JSON.stringify({ isDeleted: true })
-            });
-        }
-        tampilToast(`${listItemTerpilih.length} Foto dipindah ke sampah`);
-        batalkanModeSeleksi();
-        muatFoto();
-    }
-
-    async function prosesPulihkanMasal() {
-        if (listItemTerpilih.length === 0) return tampilToast("Pilih foto terlebih dahulu!");
-        for (let id of listItemTerpilih) {
-            await fetch(`/api/photos/${id}/trash`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-                body: JSON.stringify({ isDeleted: false })
-            });
-        }
-        tampilToast(`${listItemTerpilih.length} Foto berhasil dipulihkan`);
-        batalkanModeSeleksi();
-        muatFoto();
-    }
-
-    async function prosesHapusPermanenMasal() {
-        if (listItemTerpilih.length === 0) return tampilToast("Pilih foto terlebih dahulu!");
-        if (confirm(`Hapus permanen ${listItemTerpilih.length} foto terpilih dari Cloudinary?`)) {
-            for (let id of listItemTerpilih) {
-                await fetch(`/api/photos/${id}`, {
-                    method: 'DELETE',
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
-            }
-            tampilToast("Foto terpilih berhasil dihapus permanen");
-            batalkanModeSeleksi();
-            muatFoto();
-        }
     }
 </script>
 </body>
