@@ -1,20 +1,17 @@
 {
   "name": "photo-app",
   "version": "1.0.0",
-  "description": "",
+  "description": "Aplikasi Galeri Foto",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
   "dependencies": {
-    "cloudinary": "^1.41.0",
-    "cookie-parser": "^1.4.7",
+    "cloudinary": "^2.0.0",
+    "cookie-parser": "^1.4.6",
     "cors": "^2.8.5",
     "express": "^4.19.2",
-    "mongodb": "^7.3.0",
+    "mongodb": "^6.5.0",
     "multer": "^1.4.5-lts.1",
     "multer-storage-cloudinary": "^4.0.0"
   }
