@@ -3,70 +3,54 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login - Galeri Foto</title>
-    <link rel="stylesheet" href="style.css">
+    <title>Masuk - Galeri</title>
     <style>
-        body { font-family: Arial, sans-serif; background-color: #f4f4f9; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
-        .login-container { background: white; padding: 30px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); width: 100%; max-width: 350px; }
-        h2 { text-align: center; margin-bottom: 20px; color: #333; }
-        .input-group { margin-bottom: 15px; }
-        .input-group label { display: block; margin-bottom: 5px; color: #666; }
-        .input-group input { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; }
-        button { width: 100%; padding: 10px; background-color: #0070f3; color: white; border: none; border-radius: 4px; font-size: 16px; cursor: pointer; }
-        button:hover { background-color: #0051cb; }
-        .error-msg { color: red; font-size: 14px; text-align: center; margin-top: 10px; display: none; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f8f9fa; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+        .box { background: white; padding: 40px 30px; border-radius: 24px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); width: 100%; max-width: 340px; text-align: center; }
+        .badge { background: #e8f5e9; color: #2e7d32; padding: 5px 15px; border-radius: 20px; font-size: 12px; font-weight: bold; display: inline-block; margin-bottom: 15px; }
+        h2 { margin: 0; font-size: 24px; color: #000; }
+        p.sub { color: #888; font-size: 14px; margin-top: 5px; margin-bottom: 30px; }
+        .input-group { margin-bottom: 15px; text-align: left; }
+        label { display: block; font-size: 13px; font-weight: bold; margin-bottom: 8px; color: #333; }
+        input { width: 100%; padding: 14px; background: #f1f3f5; border: none; border-radius: 12px; box-sizing: border-box; outline: none; }
+        .btn { width: 100%; padding: 14px; background: #000; color: #fff; border: none; border-radius: 12px; font-weight: bold; cursor: pointer; margin-top: 10px; transition: 0.3s; }
+        .btn:hover { background: #333; }
+        .footer { margin-top: 20px; font-size: 13px; color: #666; }
+        .footer a { color: #000; text-decoration: none; font-weight: bold; }
+        #notif { color: red; font-size: 12px; margin-top: 10px; display: none; }
     </style>
 </head>
 <body>
-
-<div class="login-container">
-    <h2>Masuk ke Galeri</h2>
-    <form id="loginForm">
-        <div class="input-group">
-            <label for="username">Username</label>
-            <input type="text" id="username" required>
-        </div>
-        <div class="input-group">
-            <label for="password">Password</label>
-            <input type="password" id="password" required>
-        </div>
-        <button type="submit">Log In</button>
-        <p class="error-msg" id="errorMsg">Username atau password salah!</p>
-    </form>
-</div>
-
-<script>
-    document.getElementById('loginForm').addEventListener('submit', async (e) => {
-        e.preventDefault();
-        
-        const username = document.getElementById('username').value;
-        const password = document.getElementById('password').value;
-        const errorMsg = document.getElementById('errorMsg');
-
-        try {
-            // Mengirim data langsung ke endpoint auth backend Vercel kamu
-            const response = await fetch('/api/auth/login', {
+    <div class="box">
+        <span class="badge">Selamat Datang</span>
+        <h2>Masuk</h2>
+        <p class="sub">Masuk ke akun anda untuk melanjutkan</p>
+        <form id="loginForm">
+            <div class="input-group">
+                <label>Nama Pengguna</label>
+                <input type="text" id="username" placeholder="Masukkan nama pengguna" required>
+            </div>
+            <div class="input-group">
+                <label>Kata Sandi</label>
+                <input type="password" id="password" placeholder="Masukkan kata sandi" required>
+            </div>
+            <button type="submit" class="btn">Masuk</button>
+            <div id="notif"></div>
+        </form>
+        <div class="footer">Belum punya akun? <a href="register.html">Daftar di sini</a></div>
+    </div>
+    <script>
+        document.getElementById('loginForm').onsubmit = async (e) => {
+            e.preventDefault();
+            const res = await fetch('/api/auth/login', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ username, password })
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({username: username.value, password: password.value})
             });
-
-            const data = await response.json();
-
-            if (response.ok) {
-                // Jika sukses login, simpan token dan lempar ke dashboard
-                localStorage.setItem('token', data.token);
-                window.location.href = 'dashboard.html';
-            } else {
-                errorMsg.innerText = data.message || 'Login gagal!';
-                errorMsg.style.display = 'block';
-            }
-        } catch (error) {
-            errorMsg.innerText = 'Gagal terhubung ke server!';
-            errorMsg.style.display = 'block';
+            const data = await res.json();
+            if(res.ok) { localStorage.setItem('token', data.token); location.href = 'dashboard.html'; }
+            else { const n = document.getElementById('notif'); n.innerText = data.message; n.style.display = 'block'; }
         }
-    });
-</script>
-
+    </script>
 </body>
 </html>
