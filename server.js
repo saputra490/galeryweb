@@ -13,15 +13,21 @@ app.use(express.urlencoded({ extended: true }));
 app.use(cors());
 app.use(cookieParser('kunci_rahasia_galeri')); 
 
-// KONEKSI MONGODB DINAMIS (ANTISIPASI VERCEL SERVERLESS RESET)
+// KONEKSI MONGODB SERVERLESS (Aman dari reset instansi Vercel)
 const uri = process.env.MONGODB_URI;
-const client = new MongoClient(uri);
+let client;
+let clientPromise;
+
+if (!uri) {
+  console.error("PENTING: Variabel MONGODB_URI belum diatur di Environment Variables Vercel!");
+} else {
+  client = new MongoClient(uri);
+  clientPromise = client.connect();
+}
 
 async function dapatkanKoleksi(namaKoleksi) {
-  if (!client.topology || !client.topology.isConnected()) {
-    await client.connect();
-  }
-  const db = client.db('galeri_db');
+  const koneksiDb = await clientPromise;
+  const db = koneksiDb.db('galeri_db');
   return db.collection(namaKoleksi);
 }
 
@@ -41,10 +47,10 @@ const storage = new CloudinaryStorage({
 });
 const upload = multer({ storage: storage });
 
-// MEMBACA FILE STATIS LANGSUNG DARI ROOT FOLDER (photo-app)
+// Membaca file statis langsung dari root folder `photo-app`
 app.use(express.static(__dirname));
 
-// MIDDLEWARE CEK LOGIN
+// MIDDLEWARE PENGAMAN DASHBOARD
 async function pastikanLogin(req, res, next) {
   const usernameCookie = req.signedCookies.user_session;
   if (!usernameCookie) {
@@ -53,19 +59,16 @@ async function pastikanLogin(req, res, next) {
   next();
 }
 
-// ==========================================
-// RUTE UTAMA (MENGATASI EROR 500 VERCEL)
-// ==========================================
+// 1. RUTE UTAMA (Mencegah Error 500 Serverless)
 app.get('/', (req, res) => {
   const usernameCookie = req.signedCookies.user_session;
   if (usernameCookie) {
     return res.redirect('/dashboard');
   }
-  // Menampilkan index.html sebagai halaman awal (login/daftar)
   res.sendFile(path.join(__dirname, 'index.html'));
 });
 
-// 1. RUTE DAFTAR AKUN (REGISTER)
+// 2. RUTE DAFTAR AKUN (REGISTER)
 app.post('/register', async (req, res) => {
   try {
     const { username, password } = req.body;
@@ -74,7 +77,6 @@ app.post('/register', async (req, res) => {
     }
 
     const penggunaDb = await dapatkanKoleksi('pengguna');
-    
     const userExist = await penggunaDb.findOne({ username });
     if (userExist) {
       return res.send("Username sudah digunakan, cari nama lain!");
@@ -84,16 +86,15 @@ app.post('/register', async (req, res) => {
     res.send("<script>alert('Akun berhasil dibuat! Silakan login.'); window.location='/';</script>");
   } catch (err) {
     console.error(err);
-    res.status(500).send("Gagal mendaftarkan akun ke database cloud.");
+    res.status(500).send("Gagal mendaftarkan akun. Pastikan MONGODB_URI di Vercel sudah benar.");
   }
 });
 
-// 2. RUTE MASUK AKUN (LOGIN)
+// 3. RUTE MASUK AKUN (LOGIN)
 app.post('/login', async (req, res) => {
   try {
     const { username, password } = req.body;
     const penggunaDb = await dapatkanKoleksi('pengguna');
-
     const user = await penggunaDb.findOne({ username, password });
 
     if (user) {
@@ -104,28 +105,27 @@ app.post('/login', async (req, res) => {
     }
   } catch (err) {
     console.error(err);
-    res.status(500).send("Terjadi kesalahan pada server saat login.");
+    res.status(500).send("Terjadi kesalahan sistem saat proses login.");
   }
 });
 
-// 3. RUTE DASHBOARD UTAMA
+// 4. RUTE DASHBOARD UTAMA
 app.get('/dashboard', pastikanLogin, async (req, res) => {
-  // Jika kamu punya file terpisah bernama dashboard.html, ganti 'index.html' di bawah menjadi 'dashboard.html'
   res.sendFile(path.join(__dirname, 'index.html')); 
 });
 
-// 4. RUTE AMBIL DAFTAR FOTO
+// 5. RUTE AMBIL DATA FOTO DARI MONGODB
 app.get('/api/foto', pastikanLogin, async (req, res) => {
   try {
     const fotoDb = await dapatkanKoleksi('foto');
     const daftarFoto = await fotoDb.find({}).toArray();
     res.json(daftarFoto);
   } catch (err) {
-    res.status(500).json({ error: "Gagal memuat foto" });
+    res.status(500).json({ error: "Gagal memuat foto dari database" });
   }
 });
 
-// 5. RUTE UNGGAH FOTO BARU
+// 6. RUTE UNGGAH FOTO BARU
 app.post('/api/upload', pastikanLogin, upload.single('foto'), async (req, res) => {
   try {
     if (!req.file) return res.status(400).send("Foto gagal diunggah");
@@ -141,17 +141,17 @@ app.post('/api/upload', pastikanLogin, upload.single('foto'), async (req, res) =
     res.redirect('/dashboard');
   } catch (err) {
     console.error(err);
-    res.status(500).send("Gagal menyimpan data foto ke database cloud.");
+    res.status(500).send("Gagal menyimpan data foto ke Cloudinary/MongoDB.");
   }
 });
 
-// 6. RUTE KELUAR AKUN (LOGOUT)
+// 7. RUTE KELUAR AKUN (LOGOUT)
 app.get('/logout', (req, res) => {
   res.clearCookie('user_session');
   res.redirect('/');
 });
 
-// MENJALANKAN SERVER
+// MENJALANKAN SERVER LOCAL / CLOUD
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Server aktif di port ${PORT}`);
