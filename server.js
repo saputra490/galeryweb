@@ -13,7 +13,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use(cors());
 app.use(cookieParser('kunci_rahasia_galeri')); 
 
-// KONEKSI MONGODB SERVERLESS (Aman dari reset instansi Vercel)
+// KONEKSI MONGODB SERVERLESS (Aman & Menggunakan Promise)
 const uri = process.env.MONGODB_URI;
 let client;
 let clientPromise;
@@ -22,10 +22,13 @@ if (!uri) {
   console.error("PENTING: Variabel MONGODB_URI belum diatur di Environment Variables Vercel!");
 } else {
   client = new MongoClient(uri);
-  clientPromise = client.connect();
+  clientPromise = client.connect(); // Menyimpan promise koneksi
 }
 
 async function dapatkanKoleksi(namaKoleksi) {
+  if (!clientPromise) {
+    throw new Error("Koneksi database belum diinisialisasi.");
+  }
   const koneksiDb = await clientPromise;
   const db = koneksiDb.db('galeri_db');
   return db.collection(namaKoleksi);
@@ -47,7 +50,7 @@ const storage = new CloudinaryStorage({
 });
 const upload = multer({ storage: storage });
 
-// Membaca file statis langsung dari root folder `photo-app`
+// Membaca file statis langsung dari root folder proyek
 app.use(express.static(__dirname));
 
 // MIDDLEWARE PENGAMAN DASHBOARD
@@ -59,7 +62,7 @@ async function pastikanLogin(req, res, next) {
   next();
 }
 
-// 1. RUTE UTAMA (Mencegah Error 500 Serverless)
+// 1. RUTE UTAMA (Menyajikan halaman login/index pertama kali)
 app.get('/', (req, res) => {
   const usernameCookie = req.signedCookies.user_session;
   if (usernameCookie) {
@@ -114,7 +117,7 @@ app.get('/dashboard', pastikanLogin, async (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html')); 
 });
 
-// 5. RUTE AMBIL DATA FOTO DARI MONGODB
+// 5. RUTE AMBIL DATA FOTO
 app.get('/api/foto', pastikanLogin, async (req, res) => {
   try {
     const fotoDb = await dapatkanKoleksi('foto');
@@ -151,7 +154,7 @@ app.get('/logout', (req, res) => {
   res.redirect('/');
 });
 
-// MENJALANKAN SERVER LOCAL / CLOUD
+// MENJALANKAN SERVER
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Server aktif di port ${PORT}`);
