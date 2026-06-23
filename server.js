@@ -41,17 +41,29 @@ const storage = new CloudinaryStorage({
 });
 const upload = multer({ storage: storage });
 
-// PERBAIKAN UTAMA: Menggunakan __dirname langsung karena aset berada di root `photo-app`
+// MEMBACA FILE STATIS LANGSUNG DARI ROOT FOLDER (photo-app)
 app.use(express.static(__dirname));
 
-// MIDDLEWARE CEK LOGIN (Mencegah user masuk dashboard sebelum login)
+// MIDDLEWARE CEK LOGIN
 async function pastikanLogin(req, res, next) {
   const usernameCookie = req.signedCookies.user_session;
   if (!usernameCookie) {
-    return res.redirect('/login');
+    return res.redirect('/');
   }
   next();
 }
+
+// ==========================================
+// RUTE UTAMA (MENGATASI EROR 500 VERCEL)
+// ==========================================
+app.get('/', (req, res) => {
+  const usernameCookie = req.signedCookies.user_session;
+  if (usernameCookie) {
+    return res.redirect('/dashboard');
+  }
+  // Menampilkan index.html sebagai halaman awal (login/daftar)
+  res.sendFile(path.join(__dirname, 'index.html'));
+});
 
 // 1. RUTE DAFTAR AKUN (REGISTER)
 app.post('/register', async (req, res) => {
@@ -63,15 +75,13 @@ app.post('/register', async (req, res) => {
 
     const penggunaDb = await dapatkanKoleksi('pengguna');
     
-    // Cek apakah username sudah terdaftar
     const userExist = await penggunaDb.findOne({ username });
     if (userExist) {
       return res.send("Username sudah digunakan, cari nama lain!");
     }
 
-    // Simpan akun ke MongoDB Cloud
     await penggunaDb.insertOne({ username, password });
-    res.send("<script>alert('Akun berhasil dibuat! Silakan login.'); window.location='/login';</script>");
+    res.send("<script>alert('Akun berhasil dibuat! Silakan login.'); window.location='/';</script>");
   } catch (err) {
     console.error(err);
     res.status(500).send("Gagal mendaftarkan akun ke database cloud.");
@@ -84,15 +94,13 @@ app.post('/login', async (req, res) => {
     const { username, password } = req.body;
     const penggunaDb = await dapatkanKoleksi('pengguna');
 
-    // Cari user di MongoDB
     const user = await penggunaDb.findOne({ username, password });
 
     if (user) {
-      // Simpan session login ke cookie browser selama 1 hari agar tidak gampang keluar sendiri
       res.cookie('user_session', username, { signed: true, maxAge: 24 * 60 * 60 * 1000, httpOnly: true });
       res.redirect('/dashboard');
     } else {
-      res.send("<script>alert('Username atau password salah!'); window.location='/login';</script>");
+      res.send("<script>alert('Username atau password salah!'); window.location='/';</script>");
     }
   } catch (err) {
     console.error(err);
@@ -100,13 +108,13 @@ app.post('/login', async (req, res) => {
   }
 });
 
-// 3. RUTE DASHBOARD UTAMA (Diproteksi harus login dulu)
+// 3. RUTE DASHBOARD UTAMA
 app.get('/dashboard', pastikanLogin, async (req, res) => {
-  // PERBAIKAN: Langsung membaca index.html dari root folder proyek
+  // Jika kamu punya file terpisah bernama dashboard.html, ganti 'index.html' di bawah menjadi 'dashboard.html'
   res.sendFile(path.join(__dirname, 'index.html')); 
 });
 
-// 4. RUTE AMBIL DAFTAR FOTO DARI MONGODB
+// 4. RUTE AMBIL DAFTAR FOTO
 app.get('/api/foto', pastikanLogin, async (req, res) => {
   try {
     const fotoDb = await dapatkanKoleksi('foto');
@@ -140,14 +148,13 @@ app.post('/api/upload', pastikanLogin, upload.single('foto'), async (req, res) =
 // 6. RUTE KELUAR AKUN (LOGOUT)
 app.get('/logout', (req, res) => {
   res.clearCookie('user_session');
-  res.redirect('/login');
+  res.redirect('/');
 });
 
-// MENJALANKAN SERVER LOCAL / CLOUD
+// MENJALANKAN SERVER
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Server aktif di port ${PORT}`);
 });
 
 module.exports = app;
-
