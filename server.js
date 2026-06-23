@@ -13,8 +13,8 @@ app.use(express.urlencoded({ extended: true }));
 app.use(cors());
 app.use(cookieParser('kunci_rahasia_galeri')); 
 
-// ATURAN FILE STATIS (CSS, Gambar Lokal, JS)
-app.use(express.static(path.join(__dirname, 'public')));
+// ATURAN FILE STATIS: Menggunakan path.resolve agar aman di Vercel Serverless
+app.use(express.static(path.resolve(__dirname, 'public')));
 
 // KONEKSI MONGODB SERVERLESS
 const uri = process.env.MONGODB_URI;
@@ -62,18 +62,18 @@ async function pastikanLogin(req, res, next) {
   next();
 }
 
-// 1. RUTE UTAMA (Membuka login.html di dalam folder public)
+// 1. RUTE UTAMA (Membuka halaman login.html dengan jalur absolut)
 app.get('/', (req, res) => {
   const usernameCookie = req.signedCookies.user_session;
   if (usernameCookie) {
     return res.redirect('/dashboard');
   }
-  res.sendFile(path.join(__dirname, 'public', 'login.html'));
+  res.sendFile(path.resolve(__dirname, 'public', 'login.html'));
 });
 
-// 2. RUTE DASHBOARD UTAMA (Membuka dashboard.html di dalam folder public)
+// 2. RUTE DASHBOARD UTAMA (Membuka halaman dashboard.html dengan jalur absolut)
 app.get('/dashboard', pastikanLogin, (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'dashboard.html')); 
+  res.sendFile(path.resolve(__dirname, 'public', 'dashboard.html')); 
 });
 
 // 3. RUTE DAFTAR AKUN (REGISTER)
@@ -161,4 +161,3 @@ app.listen(PORT, () => {
 });
 
 module.exports = app;
-
