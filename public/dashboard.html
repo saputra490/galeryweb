@@ -327,7 +327,7 @@
         if (inputKamera) inputKamera.addEventListener('change', () => updateStatus(inputKamera, inputGaleri));
         if (inputGaleri) inputGaleri.addEventListener('change', () => updateStatus(inputGaleri, inputKamera));
 
-        // Pengirim Upload Form dengan Rute Endpoint Absolut
+        // Pengirim Upload Form (Menggunakan Rute Relatif yang Didukung vercel.json)
         document.querySelector('form').addEventListener('submit', async function(e) {
             e.preventDefault();
             const fileInput = inputKamera.files.length > 0 ? inputKamera : inputGaleri;
@@ -342,8 +342,8 @@
             tampilToast("Sedang mengunggah ke Cloudinary...");
 
             try {
-                // Perbaikan: Rute diubah ke domain lengkap agar tidak salah jalur koneksi di Vercel
-                const res = await fetch('https://galeryweb-n7yx.vercel.app/api/photos/upload', {
+                // Menggunakan rute relatif bersih /api/... karena perutean sudah ditangani vercel.json
+                const res = await fetch('/api/photos/upload', {
                     method: 'POST',
                     headers: { 'Authorization': `Bearer ${token}` },
                     body: formData
