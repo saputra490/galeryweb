@@ -12,11 +12,11 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 const JWT_SECRET = process.env.JWT_SECRET || 'rahasia_super_aman_galeri_123';
 
-// 1. Konfigurasi Cloudinary
+// 1. Konfigurasi Cloudinary (Disamakan dengan nama variabel di Vercel kamu)
 cloudinary.config({
-    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-    api_key: process.env.CLOUDINARY_API_KEY,
-    api_secret: process.env.CLOUDINARY_API_SECRET
+    cloud_name: process.env.CLOUD_NAME,
+    api_key: process.env.API_KEY,
+    api_secret: process.env.API_SECRET
 });
 
 // 2. Setup Storage Cloudinary untuk Multer
@@ -36,7 +36,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
 
-// 4. Koneksi Database MongoDB Cloud (PERBAIKAN SINKRONISASI NAMA DB)
+// 4. Koneksi Database MongoDB Cloud
 const MONGODB_URI = process.env.MONGODB_URI;
 let db = null;
 
@@ -48,8 +48,6 @@ async function connectDB() {
         }
         const client = new MongoClient(MONGODB_URI);
         await client.connect();
-        
-        // PENTING: Mengunci koneksi langsung ke nama database 'galeri'
         db = client.db('galeri'); 
         console.log("Database MongoDB Berhasil Terhubung Sempurna ke 'galeri'!");
     } catch (err) {
@@ -82,7 +80,6 @@ app.post('/api/auth/register', async (req, res) => {
         const { username, password } = req.body;
         if (!username || !password) return res.status(400).json({ status: 'error', message: 'Username dan Password wajib diisi!' });
         
-        // Pemicu pengecekan ulang jika koneksi db sempat terputus dinamis
         if (!db) {
             await connectDB();
             if (!db) return res.status(500).json({ status: 'error', message: 'Database belum siap terhubung!' });
@@ -106,7 +103,7 @@ app.post('/api/auth/login', async (req, res) => {
         
         if (!db) {
             await connectDB();
-            if (!db) return res.status(500).json({ status: 'error', message: 'Koneksi database Vercel Anda belum siap. Cek kembali MONGODB_URI!' });
+            if (!db) return res.status(500).json({ status: 'error', message: 'Koneksi database belum siap!' });
         }
 
         const usersCollection = db.collection('users');
