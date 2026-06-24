@@ -12,11 +12,11 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 const JWT_SECRET = process.env.JWT_SECRET || 'rahasia_super_aman_galeri_123';
 
-// 1. Konfigurasi Cloudinary
+// 1. Konfigurasi Cloudinary (Disamakan persis dengan nama Key di Dashboard Vercel kamu)
 cloudinary.config({
-    cloud_name: process.env.CLOUD_NAME,
-    api_key: process.env.API_KEY,
-    api_secret: process.env.API_SECRET
+    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+    api_key: process.env.CLOUDINARY_API_KEY,
+    api_secret: process.env.CLOUDINARY_API_SECRET
 });
 
 // 2. Setup Storage menggunakan Memory Storage agar stabil di Serverless Vercel
@@ -139,7 +139,7 @@ app.get('/api/photos', authenticateToken, async (req, res) => {
     }
 });
 
-// API: Unggah Foto Baru (DISESUAIKAN DENGAN LOG: /api/foto/unggah DAN MENGGUNAKAN STREAM)
+// API: Unggah Foto Baru 
 app.post('/api/foto/unggah', authenticateToken, upload.single('photo'), async (req, res) => {
     try {
         if (!req.file) return res.status(400).json({ status: 'error', message: 'Gagal mengunggah file gambar!' });
