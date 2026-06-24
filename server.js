@@ -12,7 +12,7 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 const JWT_SECRET = process.env.JWT_SECRET || 'rahasia_super_aman_galeri_123';
 
-// 1. Konfigurasi Cloudinary (Disamakan persis dengan nama Key di Dashboard Vercel kamu)
+// 1. Konfigurasi Cloudinary (Disamakan dengan nama key di Vercel kamu)
 cloudinary.config({
     cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
     api_key: process.env.CLOUDINARY_API_KEY,
@@ -116,7 +116,10 @@ app.post('/api/auth/login', async (req, res) => {
 // API: Mengambil Foto Berdasarkan Filter
 app.get('/api/photos', authenticateToken, async (req, res) => {
     try {
-        if (!db) return res.status(500).json({ status: 'error', message: 'Database belum aktif!' });
+        if (!db) {
+            await connectDB();
+            if (!db) return res.status(500).json({ status: 'error', message: 'Database belum aktif!' });
+        }
         
         const type = req.query.type || 'all';
         const photosCollection = db.collection('photos');
@@ -139,11 +142,16 @@ app.get('/api/photos', authenticateToken, async (req, res) => {
     }
 });
 
-// API: Unggah Foto Baru 
+// API: Unggah Foto Baru dengan Auto-Reconnect Database
 app.post('/api/foto/unggah', authenticateToken, upload.single('photo'), async (req, res) => {
     try {
         if (!req.file) return res.status(400).json({ status: 'error', message: 'Gagal mengunggah file gambar!' });
-        if (!db) return res.status(500).json({ status: 'error', message: 'Database tidak terdeteksi!' });
+        
+        // RE-CONNECT FALLBACK: Jika instance serverless Vercel "dingin", paksa koneksi ulang ke database
+        if (!db) {
+            await connectDB();
+            if (!db) return res.status(500).json({ status: 'error', message: 'Database tidak terdeteksi!' });
+        }
 
         // Fungsi pembantu mengubah buffer menjadi stream upload Cloudinary
         const uploadDariBuffer = (req) => {
@@ -184,7 +192,10 @@ app.post('/api/foto/unggah', authenticateToken, upload.single('photo'), async (r
 // API: Mengubah Status Favorit
 app.put('/api/photos/:id/favorite', authenticateToken, async (req, res) => {
     try {
-        if (!db) return res.status(500).json({ status: 'error', message: 'Database offline!' });
+        if (!db) {
+            await connectDB();
+            if (!db) return res.status(500).json({ status: 'error', message: 'Database offline!' });
+        }
         const { isFavorite } = req.body;
         
         await db.collection('photos').updateOne(
@@ -200,7 +211,10 @@ app.put('/api/photos/:id/favorite', authenticateToken, async (req, res) => {
 // API: Memindahkan Foto ke Tempat Sampah
 app.put('/api/photos/:id/trash', authenticateToken, async (req, res) => {
     try {
-        if (!db) return res.status(500).json({ status: 'error', message: 'Database offline!' });
+        if (!db) {
+            await connectDB();
+            if (!db) return res.status(500).json({ status: 'error', message: 'Database offline!' });
+        }
         const { isDeleted } = req.body;
         
         await db.collection('photos').updateOne(
@@ -216,7 +230,10 @@ app.put('/api/photos/:id/trash', authenticateToken, async (req, res) => {
 // API: Menghapus Foto Permanen
 app.delete('/api/photos/:id', authenticateToken, async (req, res) => {
     try {
-        if (!db) return res.status(500).json({ status: 'error', message: 'Database belum terhubung!' });
+        if (!db) {
+            await connectDB();
+            if (!db) return res.status(500).json({ status: 'error', message: 'Database belum terhubung!' });
+        }
         
         const photosCollection = db.collection('photos');
         const photo = await photosCollection.findOne({ _id: new ObjectId(req.params.id), userId: req.user.id });
