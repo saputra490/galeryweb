@@ -327,7 +327,7 @@
         if (inputKamera) inputKamera.addEventListener('change', () => updateStatus(inputKamera, inputGaleri));
         if (inputGaleri) inputGaleri.addEventListener('change', () => updateStatus(inputGaleri, inputKamera));
 
-        // Pengirim Upload Form (Menggunakan Rute Relatif yang Didukung vercel.json)
+        // Pengirim Upload Form (Menggunakan Rute Relatif Sesuai Backend Baru)
         document.querySelector('form').addEventListener('submit', async function(e) {
             e.preventDefault();
             const fileInput = inputKamera.files.length > 0 ? inputKamera : inputGaleri;
@@ -342,8 +342,8 @@
             tampilToast("Sedang mengunggah ke Cloudinary...");
 
             try {
-                // Menggunakan rute relatif bersih /api/... karena perutean sudah ditangani vercel.json
-                const res = await fetch('/api/photos/upload', {
+                // DIUBAH KE /api/foto/unggah AGAR MATCH SAMA LOG DAN SERVER.JS BARU
+                const res = await fetch('/api/foto/unggah', {
                     method: 'POST',
                     headers: { 'Authorization': `Bearer ${token}` },
                     body: formData
@@ -492,6 +492,17 @@
         renderGaleri();
     }
 
+    function lihatFoto(url) {
+        const lightbox = document.getElementById('boxLightbox');
+        const fotoBesar = document.getElementById('fotoBesar');
+        fotoBesar.src = url;
+        lightbox.style.display = 'flex';
+    }
+
+    function tutupFoto() {
+        document.getElementById('boxLightbox').style.display = 'none';
+    }
+
     function renderGaleri() {
         const galeriWeb = document.getElementById('galeriWeb');
         const navArea = document.getElementById('navArea');
@@ -518,29 +529,20 @@
             fotoBox.className = 'foto-box';
             fotoBox.innerHTML = `
                 <input type="checkbox" class="kotak-pilih-foto" data-id="${item._id}" onchange="hitungCheckSatuan(this, '${item._id}')" style="${modeSeleksiTerbuka ? 'display:block;' : 'display:none;'}">
-                <div class="foto-wrapper-kotak" onclick="bukaFoto('${item.imageUrl}')">
-                    <img src="${item.imageUrl}">
-                    ${item.isFavorite ? `<div class="badge-hati-melayang">❤️</div>` : ''}
+                ${item.isFavorite ? '<div class="badge-hati-melayang">❤️</div>' : ''}
+                <div class="foto-wrapper-kotak" onclick="${!modeSeleksiTerbuka ? `lihatFoto('${item.imageUrl}')` : ''}">
+                    <img src="${item.imageUrl}" alt="Foto Galeri">
                 </div>
-                <div class="info-teks-foto">${item.title || 'Tanpa Judul'}</div>
+                <div class="info-teks-foto">${item.title}</div>
+                <div class="meta-info-foto">📅 ${new Date(item.uploadedAt).toLocaleTimeString('id-ID', {hour: '2-digit', minute:'2-digit'})}</div>
                 <div class="area-tombol">
-                    <a href="${item.imageUrl}" target="_blank" class="btn-download">Unduh</a>
+                    <a href="${item.imageUrl}" download class="btn-download" target="_blank">⬇ Unduh</a>
                 </div>
             `;
             containerGrid.appendChild(fotoBox);
         });
 
         galeriWeb.appendChild(containerGrid);
-    }
-
-    function bukaFoto(url) {
-        if (modeSeleksiTerbuka) return;
-        document.getElementById('fotoBesar').src = url;
-        document.getElementById('boxLightbox').style.display = 'flex';
-    }
-
-    function tutupFoto() {
-        document.getElementById('boxLightbox').style.display = 'none';
     }
 </script>
 </body>
