@@ -4,29 +4,23 @@ const cors = require('cors');
 const cookieParser = require('cookie-parser');
 const multer = require('multer');
 const cloudinary = require('cloudinary').v2;
-const { CloudinaryStorage } = require('multer-storage-cloudinary');
 const { MongoClient, ObjectId } = require('mongodb');
 const jwt = require('jsonwebtoken');
+const { Readable } = require('stream');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 const JWT_SECRET = process.env.JWT_SECRET || 'rahasia_super_aman_galeri_123';
 
-// 1. Konfigurasi Cloudinary (Disamakan dengan nama variabel di Vercel kamu)
+// 1. Konfigurasi Cloudinary
 cloudinary.config({
     cloud_name: process.env.CLOUD_NAME,
     api_key: process.env.API_KEY,
     api_secret: process.env.API_SECRET
 });
 
-// 2. Setup Storage Cloudinary untuk Multer
-const storage = new CloudinaryStorage({
-    cloudinary: cloudinary,
-    params: {
-        folder: 'galeri_foto_lengkap',
-        allowed_formats: ['jpg', 'png', 'jpeg', 'webp']
-    }
-});
+// 2. Setup Storage menggunakan Memory Storage agar stabil di Serverless Vercel
+const storage = multer.memoryStorage();
 const upload = multer({ storage: storage });
 
 // 3. Middleware Utama
@@ -145,17 +139,34 @@ app.get('/api/photos', authenticateToken, async (req, res) => {
     }
 });
 
-// API: Unggah Foto Baru
-app.post('/api/photos/upload', authenticateToken, upload.single('photo'), async (req, res) => {
+// API: Unggah Foto Baru (DISESUAIKAN DENGAN LOG: /api/foto/unggah DAN MENGGUNAKAN STREAM)
+app.post('/api/foto/unggah', authenticateToken, upload.single('photo'), async (req, res) => {
     try {
         if (!req.file) return res.status(400).json({ status: 'error', message: 'Gagal mengunggah file gambar!' });
         if (!db) return res.status(500).json({ status: 'error', message: 'Database tidak terdeteksi!' });
 
+        // Fungsi pembantu mengubah buffer menjadi stream upload Cloudinary
+        const uploadDariBuffer = (req) => {
+            return new Promise((resolve, reject) => {
+                const stream = cloudinary.uploader.upload_stream(
+                    { folder: 'galeri_foto_lengkap' },
+                    (error, result) => {
+                        if (result) resolve(result);
+                        else reject(error);
+                    }
+                );
+                Readable.from(req.file.buffer).pipe(stream);
+            });
+        };
+
+        // Eksekusi streaming ke Cloudinary
+        const hasilCloudinary = await uploadDariBuffer(req);
+
         const photosCollection = db.collection('photos');
         const newPhoto = {
             userId: req.user.id,
-            imageUrl: req.file.path,
-            publicId: req.file.filename,
+            imageUrl: hasilCloudinary.secure_url,
+            publicId: hasilCloudinary.public_id,
             title: req.body.title || 'Tanpa Judul',
             isFavorite: false,
             isDeleted: false,
@@ -165,6 +176,7 @@ app.post('/api/photos/upload', authenticateToken, upload.single('photo'), async 
         await photosCollection.insertOne(newPhoto);
         res.json({ status: 'success', message: 'Foto berhasil disimpan ke galeri!', data: newPhoto });
     } catch (err) {
+        console.error("Error internal server saat upload:", err.message);
         res.status(500).json({ status: 'error', message: err.message });
     }
 });
